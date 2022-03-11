@@ -1,6 +1,3 @@
-# from lightgbm import Dataset
-# import tensorflow as tf
-# from tensorflow.keras import optimizers,callbacks,Input,Model,layers
 import numpy as np
 from utils import generatorXY,multiGen
 import time
@@ -9,6 +6,7 @@ from multiprocessing import Process, Manager,Pool,Queue
 import uuid
 import os
 import pysftp
+from io import BytesIO
 
 mode=0
 SNRdb=10
@@ -52,52 +50,46 @@ if __name__=="__main__":
         print(np.shape(x_train))
         
         ##########X与Y的存储方式
-        # print("saving data set y_train")
-        # start_time = time.time()
-        # # np.savetxt(data_load_address+'/y_train.csv', y_train, delimiter=',')
-        # np.save(data_load_address+'/y_train.npy', y_train)
-        # # scio.savemat(data_load_address+'/y_train.mat', {"y_train":y_train})
-        # end_time = time.time()
-        # print('Took %f seconds to save y_train' % (end_time - start_time))
-
-        # print("saving data set x_train")
-        # start_time = time.time()
-        # # np.savetxt(data_load_address+'/x_train.csv', x_train, delimiter=',')
-        # np.save(data_load_address+'/x_train.npy', x_train)
-        # # scio.savemat(data_load_address+'/x_train.mat', {"x_train":x_train})
-        # end_time = time.time()
-        # print('Took %f seconds to save x_train' % (end_time - start_time))
-        # print("done")
         print("saving data set")
-        dataSetName = os.listdir('data/trainSet/')
-        while(len(dataSetName)>480):#存满了
-            print("data full")
-            time.sleep(600)
-            dataSetName = os.listdir('data/trainSet/')
+        
+        start_ftime = time.time()
+        
+        fd=BytesIO()
+        arr = np.asanyarray(np.concatenate((x_train.T,y_train.T),0))
+        np.lib.format.write_array(fd, arr, allow_pickle=True,pickle_kwargs=dict(fix_imports=True))
+        fd.seek(0,0)
+        
+        fo = BytesIO(b'OK')
+        
+        end_ftime = time.time()
+        
         uuidStr=str(uuid.uuid4())
-        np.save(data_load_address+'/trainSet/'+uuidStr+'.npy', np.concatenate((x_train.T,y_train.T),0))
-        print("finish writing",uuidStr)
-        with open(data_load_address+'/trainSet/'+uuidStr,"w") as f:
-            f.write("OK")
+        print("finish writing",uuidStr,end_ftime - start_ftime)
+        
         with pysftp.Connection(host="192.168.168.104", username="607", password="607") as sftp:
             print("Connection succesfully stablished ... ")
-
-            # Define the file that you want to upload from your local directorty
-            # or absolute "C:\Users\sdkca\Desktop\TUTORIAL2.txt"
-            localFilePath = data_load_address+'/trainSet/'+uuidStr
+            print("Transmitting ... ")
+            start_ftime = time.time()
 
             # Define the remote path where the file will be uploaded
-            remoteFilePath = 'E:\\gaowf\\NAICsemi\\github\\data\\trainSet\\'+uuidStr
+            remoteDirPath = 'E:\\gaowf\\NAICsemi\\github\\data\\trainSet\\'
+            remoteFilePath = remoteDirPath+uuidStr
+            
+            while(len(sftp.listdir(remoteDirPath))>480):#存满了
+                print("data full at",time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time())))
+                time.sleep(120)
 
-            sftp.put(localFilePath+'.npy', remoteFilePath+'.npy')
-            sftp.put(localFilePath, remoteFilePath)
-            os.remove('data/trainSet/'+uuidStr)
-            os.remove('data/trainSet/'+uuidStr+'.npy')
-
+            sftp.putfo(fd, remoteFilePath+'.npy')
+            sftp.putfo(fo, remoteFilePath)
+            
+            end_ftime = time.time()
+            print('Took %f seconds to send data set, speed:%fMB/s' % (end_ftime - start_ftime,fd.getbuffer().nbytes/1048576/(end_ftime - start_ftime)))
+        fd.close()
+        fo.close()
         del(x_train)
         del(y_train)
         del(dataSet)
         end_time = time.time()
-        print('Took %f seconds to generate and save data set' % (end_time - start_time))
+        print('Took %f seconds to generate and transmit data set' % (end_time - start_time))
         print("current generated time:",time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time())))
         print("next estimated time:",time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()+end_time - start_time)))

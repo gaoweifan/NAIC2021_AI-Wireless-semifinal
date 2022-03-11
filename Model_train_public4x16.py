@@ -16,7 +16,7 @@ if __name__=="__main__":
     input_bits = Input(shape=(256*16*2*2,))#256载波*16天线*2（导频/数据）*2（IQ）
     out_put = rxModel(input_bits)
     model=Model(input_bits, out_put)
-    model.load_weights('Modelsave/tmp20220311-170036/model_4x16.h5',by_name=True,skip_mismatch=True)
+    model.load_weights('Modelsave/20220311-220430S51.432/model_4x16.h5',by_name=True,skip_mismatch=True)
     adam_opt = optimizers.Adam(learning_rate=0.001)  # 初始学习率为0.001
     model.compile(optimizer=adam_opt, loss='mse',metrics=[score_train])
     model.summary()
