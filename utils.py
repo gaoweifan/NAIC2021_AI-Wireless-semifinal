@@ -376,15 +376,20 @@ def offLineGenerator(H,Nf,Ne,steps_per_epoch):
             print("\nreading data from file")
             start_time = time.time()
             dataSetName = os.listdir('data/trainSet/')
-            while(len(dataSetName)==0):
+            while(len(dataSetName)<=1):
                 print("data not generated yet")
                 time.sleep(5)
                 dataSetName = os.listdir('data/trainSet/')
-            uuidStr=dataSetName[0].split(".")[0]
+            fileIdx=1
+            uuidStr=dataSetName[fileIdx].split(".")[0]
             while(dataSetName.count(uuidStr)==0):
-                print(uuidStr,"data not ready")
-                time.sleep(0.5)
+                fileIdx=(fileIdx+1)%len(dataSetName)
+                if(fileIdx==0):
+                    print(uuidStr,"data not ready")
+                    time.sleep(0.5)
+                    fileIdx=1
                 dataSetName = os.listdir('data/trainSet/')
+                uuidStr=dataSetName[fileIdx].split(".")[0]
             print(uuidStr+'.npy')
             all=np.load('data/trainSet/'+uuidStr+'.npy')
             os.remove('data/trainSet/'+uuidStr)
@@ -393,7 +398,7 @@ def offLineGenerator(H,Nf,Ne,steps_per_epoch):
             batch_y=all[2048:].T
             end_time = time.time()
             print('\nTook %f seconds to read 9000 training data\n' % (end_time - start_time))
-            batch_divider = int(steps_per_epoch/Ne)
+            batch_divider = int(steps_per_epoch/Ne)#9000/batch_size
             batch_ys = np.split(batch_y, batch_divider, 0)
             batch_xs = np.split(batch_x, batch_divider, 0)
         for i,devided_batch_y in enumerate(batch_ys):

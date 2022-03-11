@@ -8,6 +8,7 @@ import time
 from multiprocessing import Process, Manager,Pool,Queue
 import uuid
 import os
+import pysftp
 
 mode=0
 SNRdb=10
@@ -75,8 +76,24 @@ if __name__=="__main__":
             dataSetName = os.listdir('data/trainSet/')
         uuidStr=str(uuid.uuid4())
         np.save(data_load_address+'/trainSet/'+uuidStr+'.npy', np.concatenate((x_train.T,y_train.T),0))
+        print("finish writing",uuidStr)
         with open(data_load_address+'/trainSet/'+uuidStr,"w") as f:
             f.write("OK")
+        with pysftp.Connection(host="192.168.168.104", username="607", password="607") as sftp:
+            print("Connection succesfully stablished ... ")
+
+            # Define the file that you want to upload from your local directorty
+            # or absolute "C:\Users\sdkca\Desktop\TUTORIAL2.txt"
+            localFilePath = data_load_address+'/trainSet/'+uuidStr
+
+            # Define the remote path where the file will be uploaded
+            remoteFilePath = 'E:\\gaowf\\NAICsemi\\github\\data\\trainSet\\'+uuidStr
+
+            sftp.put(localFilePath+'.npy', remoteFilePath+'.npy')
+            sftp.put(localFilePath, remoteFilePath)
+            os.remove('data/trainSet/'+uuidStr)
+            os.remove('data/trainSet/'+uuidStr+'.npy')
+
         del(x_train)
         del(y_train)
         del(dataSet)

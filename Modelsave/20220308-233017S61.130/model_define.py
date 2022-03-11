@@ -1,10 +1,7 @@
-from tensorflow.keras import layers,backend as K
+from tensorflow.keras import layers
 def rxModel(input_bits):
     temp = layers.Reshape((256,16,2,2))(input_bits)
-    #temp = layers.Permute((1,2,4,3))(temp)#256载波*16天线*2（IQ）*2（导频/数据作为通道维）
-    temp = temp[:,:,:,1,:]
-    temp = K.expand_dims(temp,-1)
-    temp = K.concatenate([temp,temp],-1)
+    temp = layers.Permute((1,2,4,3))(temp)#256载波*16天线*2（IQ）*2（导频/数据作为通道维）
     temp = layers.BatchNormalization()(temp)
 
     # temp = layers.Dense(4096, activation='relu')(temp)

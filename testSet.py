@@ -25,7 +25,7 @@ if __name__=="__main__":
     #############产生Y与X
     print("generating data set")
     
-    dataSet=[generatorXY(9000,H,0)]
+    dataSet=[generatorXY(10000,H,0)]
 
     # each_batch=900  # 每批次样本数=each_batch
     # worker=10  # 每轮样本数=each_batch*worker(其中worker=steps_per_epoch)
