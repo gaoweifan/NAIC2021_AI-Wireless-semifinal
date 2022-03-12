@@ -16,7 +16,7 @@ if __name__=="__main__":
     input_bits = Input(shape=(256*16*2*2,))#256载波*16天线*2（导频/数据）*2（IQ）
     out_put = rxModel(input_bits)
     model=Model(input_bits, out_put)
-    model.load_weights('Modelsave/20220311-220430S51.432/model_4x16.h5',by_name=True,skip_mismatch=True)
+    # model.load_weights('Modelsave/20220311-220430S51.432/model_4x16.h5',by_name=True,skip_mismatch=True)
     adam_opt = optimizers.Adam(learning_rate=0.001)  # 初始学习率为0.001
     model.compile(optimizer=adam_opt, loss='mse',metrics=[score_train])
     model.summary()
@@ -32,8 +32,8 @@ if __name__=="__main__":
 
     #############产生Y与X用于验证模型性能，非评测用
     # Y_val, X_val = generatorXY(2000, H)
-    Y_val=np.load(data_load_address+'/y_train.npy')
-    X_val=np.load(data_load_address+'/x_train.npy')
+    Y_val=np.load(data_load_address+'/y_test.npy')
+    X_val=np.load(data_load_address+'/x_test.npy')
     print(np.shape(Y_val))
     print(np.shape(X_val))
 
@@ -82,32 +82,31 @@ if __name__=="__main__":
     # 早停回调函数
     esCBk=EarlyStopping(monitor='val_score_train', patience=100, verbose=1, mode='max', baseline=None, restore_best_weights=False)
     
-    # each_batch=2000
-    # batch_divider=2  # 每批次样本数=each_batch/batch_divider
-    # worker=10  # 每轮样本数=each_batch*worker
-    # epoch=100  # 总样本数=each_batch*worker*epoch
-    # steps_per_epoch=worker*batch_divider
-    steps_per_epoch=9
-    batch_size=1000
-    epoch=200
-    Ne=batch_size*steps_per_epoch/9000  # 每轮需要的文件数
-    Nf=int(epoch*Ne)  # 需要的总文件数
-    if (epoch * Ne != Nf):
-        print("Nf必须为整数:", epoch * Ne)
-        exit()
-    else:
-        print("Nf:", Nf)
-        print("Nf per epoch:", Ne)
-    if (9000 / batch_size != int(9000 / batch_size)):
-        print("batch_divider=9000/batch_size必须为整数:", 9000 / batch_size)
-        exit()
-    else:
-        print("batch_divider:", int(9000 / batch_size))
+    each_batch=2000
+    batch_divider=2  # 每批次样本数=each_batch/batch_divider
+    worker=10  # 每轮样本数=each_batch*worker
+    epoch=100  # 总样本数=each_batch*worker*epoch
+    steps_per_epoch=worker*batch_divider
+    # steps_per_epoch=9
+    # batch_size=1000
+    # epoch=200
+    # Ne=batch_size*steps_per_epoch/9000  # 每轮需要的文件数
+    # Nf=int(epoch*Ne)  # 需要的总文件数
+    # if (epoch * Ne != Nf):
+    #     print("Nf必须为整数:", epoch * Ne)
+    #     exit()
+    # else:
+    #     print("Nf:", Nf)
+    #     print("Nf per epoch:", Ne)
+    # if (9000 / batch_size != int(9000 / batch_size)):
+    #     print("batch_divider=9000/batch_size必须为整数:", 9000 / batch_size)
+    #     exit()
+    # else:
+    #     print("batch_divider:", int(9000 / batch_size))
 
     model.fit(
-        # multiGenerator(H,epoch,each_batch,batch_divider,worker),
-        offLineGenerator(H,Nf,Ne,steps_per_epoch),
-        # steps_per_epoch=worker*batch_divider,
+        multiGenerator(H,epoch,each_batch,batch_divider,worker),
+        # offLineGenerator(H,Nf,Ne,steps_per_epoch),
         steps_per_epoch=steps_per_epoch,
         epochs=epoch,
         validation_data=(Y_val, X_val),
