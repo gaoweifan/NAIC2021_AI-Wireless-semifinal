@@ -24,16 +24,16 @@ if __name__=="__main__":
     ###########################以下仅为信道数据载入和链路使用范例############
     import scipy.io as scio
 
-    data_load_address = './dataset'
-    mat = scio.loadmat(data_load_address+'/Htrain.mat')
+    main_address = '/code'
+    mat = scio.loadmat('/dataset/Htrain.mat')
     x_train = mat['H_train']  # shape=?*antennas*delay*IQ
     print(np.shape(x_train))
     H=x_train[:,:,:,0]+1j*x_train[:,:,:,1]
 
     #############产生Y与X用于验证模型性能，非评测用
     # Y_val, X_val = generatorXY(2000, H)
-    Y_val=np.load(data_load_address+'/y_test.npy')
-    X_val=np.load(data_load_address+'/x_test.npy')
+    Y_val=np.load(main_address+'/data/y_test.npy')
+    X_val=np.load(main_address+'/data/x_test.npy')
     print(np.shape(Y_val))
     print(np.shape(X_val))
 
@@ -66,7 +66,7 @@ if __name__=="__main__":
                 print("update best score from",self.best_score,"to",tmp_score)
                 self.best_score=tmp_score
                 print("saving Model")
-                modelpath = f'./Modelsave/tmp{current_time}/'
+                modelpath = f'{main_address}/Modelsave/tmp{current_time}/'
                 # encoder.save(modelpath+"encoder.h5")
                 # decoder.save(modelpath+"decoder.h5")
                 try:
@@ -123,7 +123,7 @@ if __name__=="__main__":
     # Y_1, X_1 = generatorXY(1000, H)
     Y_1, X_1 = Y_val, X_val
     try:
-        model.load_weights(f'./Modelsave/tmp{current_time}/model_4x16.h5')
+        model.load_weights(f'{main_address}/Modelsave/tmp{current_time}/model_4x16.h5')
     except:
         pass
     Xval_pre = model.predict(Y_1)
@@ -135,13 +135,13 @@ if __name__=="__main__":
     print('score=',score_str)
 
     # 保存模型权重及代码
-    modelpath = f'./Modelsave/{current_time}S{score_str}/'
+    modelpath = f'{main_address}/Modelsave/{current_time}S{score_str}/'
     try:
-        os.rename(f'./Modelsave/tmp{current_time}/', modelpath)
+        os.rename(f'{main_address}/Modelsave/tmp{current_time}/', modelpath)
         print("modelpath:",modelpath)
     except:
         print("no improvement")
         model.save(modelpath+'model_4x16.h5')
         print("model saved")
     # save code
-    shutil.copyfile('./model_define.py', modelpath+'model_define.py')
+    shutil.copyfile('{main_address}/model_define.py', modelpath+'model_define.py')

@@ -17,8 +17,8 @@ if __name__=="__main__":
     ###########################以下仅为信道数据载入范例############
     import scipy.io as scio
     print("loading H_train")
-    data_load_address = './data'
-    mat = scio.loadmat(data_load_address+'/Htrain.mat')
+    data_load_address = '/code/data'
+    mat = scio.loadmat('/dataset/Htrain.mat')
     h_train = mat['H_train']  # shape=?*antennas*delay*IQ
     print(np.shape(h_train))
     H=h_train[:,:,:,0]+1j*h_train[:,:,:,1]
@@ -68,15 +68,16 @@ if __name__=="__main__":
         # print('Took %f seconds to save x_train' % (end_time - start_time))
         # print("done")
         print("saving data set")
-        dataSetName = os.listdir('data/trainSet/')
-        while(len(dataSetName)>480):#存满了
-            print("data full")
-            time.sleep(600)
-            dataSetName = os.listdir('data/trainSet/')
-        uuidStr=str(uuid.uuid4())
-        np.save(data_load_address+'/trainSet/'+uuidStr+'.npy', np.concatenate((x_train.T,y_train.T),0))
-        with open(data_load_address+'/trainSet/'+uuidStr,"w") as f:
-            f.write("OK")
+        for _ in range(5):
+            dataSetName = os.listdir(data_load_address+'/trainSet/')
+            while(len(dataSetName)>480):#存满了
+                print("data full")
+                time.sleep(600)
+                dataSetName = os.listdir(data_load_address+'/trainSet/')
+            uuidStr=str(uuid.uuid4())
+            np.save(data_load_address+'/trainSet/'+uuidStr+'.npy', np.concatenate((x_train.T,y_train.T),0))
+            with open(data_load_address+'/trainSet/'+uuidStr,"w") as f:
+                f.write("OK")
         del(x_train)
         del(y_train)
         del(dataSet)

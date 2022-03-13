@@ -3,7 +3,7 @@ import time
 import scipy.io as scio
 import os
 
-data_load_address = './data'
+data_load_address = '/code/data'
 
 print("reading data")
 start_time = time.time()

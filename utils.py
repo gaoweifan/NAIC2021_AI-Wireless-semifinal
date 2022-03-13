@@ -147,7 +147,7 @@ def ofdm_simulate(codeword, channelResponse, SNRdb, mu, CP_flag, K, P, CP, pilot
 
 def MIMO(X, HMIMO, SNRdb,flag,P):
     P = P * 2
-    Pilot_file_name = 'Pilot_' + str(P)
+    Pilot_file_name = '/code/Pilot_' + str(P)
     if os.path.isfile(Pilot_file_name):
         bits = np.loadtxt(Pilot_file_name, delimiter=',')
     else:
@@ -192,7 +192,7 @@ def MIMO(X, HMIMO, SNRdb,flag,P):
 
 def MIMO4x16(X, HMIMO, SNRdb,flag,P):
     P = P * 4
-    Pilot_file_name = 'Pilot_' + str(P)
+    Pilot_file_name = '/code/Pilot_' + str(P)
     if os.path.isfile(Pilot_file_name):
         bits = np.loadtxt(Pilot_file_name, delimiter=',')
     else:
@@ -365,6 +365,7 @@ def multiGenerator(H,epoch,each_batch=1000,batch_divider=1,worker=10):
 # 每轮样本数  =9000*Ne
 # 每批次样本数=9000*Ne/steps_per_epoch
 def offLineGenerator(H,Nf,Ne,steps_per_epoch):
+    data_load_address = '/code/data'
     i=0
     while True:
         i=i+1
@@ -375,11 +376,11 @@ def offLineGenerator(H,Nf,Ne,steps_per_epoch):
         else:
             print("\nreading data from file")
             start_time = time.time()
-            dataSetName = os.listdir('data/trainSet/')
+            dataSetName = os.listdir(data_load_address+'/trainSet/')
             while(len(dataSetName)<=1):
                 print("data not generated yet")
                 time.sleep(5)
-                dataSetName = os.listdir('data/trainSet/')
+                dataSetName = os.listdir(data_load_address+'/trainSet/')
             fileIdx=1
             uuidStr=dataSetName[fileIdx].split(".")[0]
             while(dataSetName.count(uuidStr)==0):
@@ -388,12 +389,12 @@ def offLineGenerator(H,Nf,Ne,steps_per_epoch):
                     print(uuidStr,"data not ready")
                     time.sleep(0.5)
                     fileIdx=1
-                dataSetName = os.listdir('data/trainSet/')
+                dataSetName = os.listdir(data_load_address+'/trainSet/')
                 uuidStr=dataSetName[fileIdx].split(".")[0]
             print(uuidStr+'.npy')
-            all=np.load('data/trainSet/'+uuidStr+'.npy')
-            os.remove('data/trainSet/'+uuidStr)
-            os.remove('data/trainSet/'+uuidStr+'.npy')
+            all=np.load(data_load_address+'/trainSet/'+uuidStr+'.npy')
+            os.remove(data_load_address+'/trainSet/'+uuidStr)
+            os.remove(data_load_address+'/trainSet/'+uuidStr+'.npy')
             batch_x=all[:2048].T
             batch_y=all[2048:].T
             end_time = time.time()

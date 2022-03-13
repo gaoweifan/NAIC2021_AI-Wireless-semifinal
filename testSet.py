@@ -1,6 +1,6 @@
-from lightgbm import Dataset
-import tensorflow as tf
-from tensorflow.keras import optimizers,callbacks,Input,Model,layers
+# from lightgbm import Dataset
+# import tensorflow as tf
+# from tensorflow.keras import optimizers,callbacks,Input,Model,layers
 import numpy as np
 from utils import *
 import time
@@ -16,8 +16,8 @@ if __name__=="__main__":
     ###########################以下仅为信道数据载入范例############
     import scipy.io as scio
     print("loading H_train")
-    data_load_address = './dataset'
-    mat = scio.loadmat(data_load_address+'/Htrain.mat')
+    data_load_address = '/code/data'
+    mat = scio.loadmat('/dataset/Htrain.mat')
     h_train = mat['H_train']  # shape=?*antennas*delay*IQ
     print(np.shape(h_train))
     H=h_train[:,:,:,0]+1j*h_train[:,:,:,1]
