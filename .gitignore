@@ -1,6 +1,7 @@
 #data
 *.mat
 *.h5
+*.ckpt
 *.npy
 *.bin
 *.csv

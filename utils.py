@@ -1,7 +1,6 @@
 from __future__ import division
 import numpy as np
 # import scipy.interpolate 
-import tensorflow as tf
 import math
 import os
 from multiprocessing import Process,Pool,Manager
@@ -408,6 +407,7 @@ def offLineGenerator(H,Nf,Ne,steps_per_epoch):
 
 #评价指标
 def score_train(y_true, y_pred):
+    import tensorflow as tf
     y_true = tf.cast(y_true, dtype=tf.int32)
     y_pred = tf.cast(tf.floor(y_pred + 0.5), dtype=tf.int32)
     same=tf.cast(y_true==y_pred, dtype=tf.float32)
@@ -415,3 +415,56 @@ def score_train(y_true, y_pred):
     return score
     # y_pred = np.array(np.floor(y_pred + 0.5), dtype=bool)
     # return 100*np.mean(y_true==y_pred)
+
+from mindspore import nn
+class scoreMAE(nn.Metric):
+    """定义metric"""
+    def __init__(self):
+        super(scoreMAE, self).__init__()
+        self.clear()
+
+    def clear(self):
+        self.abs_error_sum = 0
+        self.samples_num = 0
+
+    def update(self, *inputs):
+        y_pred = inputs[0].asnumpy()
+        y_pred = np.floor(y_pred + 0.5)
+        y = inputs[1].asnumpy()
+        y = np.floor(y + 0.5)
+        error_abs = np.abs(y.reshape(y_pred.shape) - y_pred)
+        self.abs_error_sum += error_abs.sum()
+        self.samples_num += y.shape[0]
+
+    def eval(self):
+        return self.abs_error_sum / self.samples_num
+
+class DatasetGenerator:
+    def __init__(self,numSamples,H,training):
+        self.H = H
+        self.training = training
+        if(self.training):
+            self.numSamples = numSamples
+        else:
+            self.Y_val=np.load('./data/y_test.npy')
+            self.X_val=np.load('./data/x_test.npy')
+            self.numSamples = self.Y_val.shape[0]
+
+    def __getitem__(self, index):
+        if(self.training):
+            bits0 = np.random.binomial(n=1, p=0.5, size=(128 * 4,))
+            bits1 = np.random.binomial(n=1, p=0.5, size=(128 * 4,))
+            bits2 = np.random.binomial(n=1, p=0.5, size=(128 * 4,))
+            bits3 = np.random.binomial(n=1, p=0.5, size=(128 * 4,))
+            X = [bits0, bits1, bits2, bits3]
+            h_idx=index%9000
+            HH = self.H[h_idx]
+            YY = MIMO4x16(X, HH, SNRdb, mode, Pilotnum) / 20  ###
+            XX = np.concatenate((bits0, bits1, bits2, bits3), 0)
+        else:
+            YY = self.Y_val[index]
+            XX = self.X_val[index]
+        return YY, XX
+
+    def __len__(self):
+        return self.numSamples
