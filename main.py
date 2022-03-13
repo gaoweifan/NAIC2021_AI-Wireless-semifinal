@@ -28,14 +28,14 @@ from mindspore.communication import init
 from mindspore.nn import Momentum,Metric
 from mindspore import Model, context
 from mindspore.context import ParallelMode
-from mindspore.train.callback import ModelCheckpoint, CheckpointConfig, LossMonitor
+from mindspore.train.callback import ModelCheckpoint, CheckpointConfig, LossMonitor,TimeMonitor, SummaryCollector
 from mindspore import load_checkpoint, load_param_into_net
 from model_define_mindspore import getRxNet
-from utils import scoreMAE,DatasetGenerator
-
+from utils import scoreMAE,DatasetGenerator,generator,SaveCallback
+import time
 
 def run(args):
-    random.seed(1)
+    random.seed(time.time())
     parser = argparse.ArgumentParser(description='Image classification')
     
     
@@ -55,16 +55,31 @@ def run(args):
     ls = MSELoss(reduction="mean")
     opt = Momentum(filter(lambda x: x.requires_grad, net.get_parameters()), learning_rate=0.01, momentum=0.9)
 
-    model = Model(net, loss_fn=ls, optimizer=opt, metrics={'score':scoreMAE})
+    model = Model(net, loss_fn=ls, optimizer=opt, metrics={'score':scoreMAE()})
+
+    import scipy.io as scio
+    data_home = os.path.join(args.data_url,"Htrain.mat")
+    assert os.path.exists(data_home), "the dataset path is invalid!"
+    mat = scio.loadmat(data_home)
+    x_train = mat['H_train']  # shape=?*antennas*delay*IQ
+    H=x_train[:,:,:,0]+1j*x_train[:,:,:,1]
+    print(H.shape)
 
     # as for train, users could use model.train
     if args.do_train:
-        dataset = create_dataset(args)
-        batch_num = dataset.get_dataset_size()
-        config_ck = CheckpointConfig(save_checkpoint_steps=batch_num, keep_checkpoint_max=5)
-        ckpoint_cb = ModelCheckpoint(prefix="model", directory=args.train_url, config=config_ck)
+        from datetime import datetime
+        current_time = datetime.now().strftime("%Y%m%d-%H%M%S")
+        dataset = create_dataset(args,H)
+        eval_dataset = create_dataset(args,H,training=False)
+        # batch_num = dataset.get_dataset_size()
+        # config_ck = CheckpointConfig(save_checkpoint_steps=batch_num, keep_checkpoint_max=5)
+        # ckpoint_cb = ModelCheckpoint(prefix="model", directory=args.train_url, config=config_ck)
+        save_cb = SaveCallback(model,eval_dataset,os.path.join(args.train_url,current_time))
         loss_cb = LossMonitor()
-        model.train(epoch_size, dataset, callbacks=[ckpoint_cb, loss_cb])
+        time_cb = TimeMonitor()
+        summary_cb = SummaryCollector(summary_dir=os.path.join('./logs',current_time))
+        print("start training")
+        model.train(epoch_size, dataset, callbacks=[save_cb, loss_cb,time_cb,summary_cb])
 
     # as for evaluation, users could use model.eval
     if args.do_eval:
@@ -76,19 +91,21 @@ def run(args):
         print("result: ", res)
 
 
-def create_dataset(args, training=True):
+def create_dataset(args,H,training=True):
     """
     create data for next use such as training or inferring
     """
-    import scipy.io as scio
-
-    data_home = os.path.join(args.data_url,"Htrain.mat")
-    assert os.path.exists(data_home), "the dataset path is invalid!"
-    mat = scio.loadmat(data_home)
-    x_train = mat['H_train']  # shape=?*antennas*delay*IQ
-    H=x_train[:,:,:,0]+1j*x_train[:,:,:,1]
-    dataset_generator = DatasetGenerator(args.numSamples,H,training)
-    dataset = ds.GeneratorDataset(dataset_generator, ["data", "label"], shuffle=False)
+    # dataset_generator = DatasetGenerator(args.numSamples,H,training)
+    if(training):
+        dataset_generator=generator(args.batch_size,H)
+        dataset = ds.GeneratorDataset(dataset_generator,["data", "label"],num_parallel_workers=args.data_woker, shuffle=False)
+    else:
+        import numpy as np
+        Y_val=np.load('./data/y_test.npy')
+        X_val=np.load('./data/x_test.npy')
+        data = (Y_val, X_val)
+        dataset = ds.NumpySlicesDataset(data, ["data", "label"], num_parallel_workers=args.data_woker, shuffle=False)
+    
     # cifar_ds = ds.Cifar10Dataset(data_home)
     # if args.run_distribute:
     #     rank_id = int(os.getenv('RANK_ID'))

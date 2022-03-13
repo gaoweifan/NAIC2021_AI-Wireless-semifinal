@@ -146,7 +146,7 @@ def ofdm_simulate(codeword, channelResponse, SNRdb, mu, CP_flag, K, P, CP, pilot
 
 def MIMO(X, HMIMO, SNRdb,flag,P):
     P = P * 2
-    Pilot_file_name = '/code/Pilot_' + str(P)
+    Pilot_file_name = 'Pilot_' + str(P)
     if os.path.isfile(Pilot_file_name):
         bits = np.loadtxt(Pilot_file_name, delimiter=',')
     else:
@@ -191,7 +191,7 @@ def MIMO(X, HMIMO, SNRdb,flag,P):
 
 def MIMO4x16(X, HMIMO, SNRdb,flag,P):
     P = P * 4
-    Pilot_file_name = '/code/Pilot_' + str(P)
+    Pilot_file_name = 'Pilot_' + str(P)
     if os.path.isfile(Pilot_file_name):
         bits = np.loadtxt(Pilot_file_name, delimiter=',')
     else:
@@ -295,8 +295,8 @@ def generator(batch,H,h_idx=0):
             XX = np.concatenate((bits0, bits1, bits2, bits3), 0)
             input_labels.append(XX)
             input_samples.append(YY)
-        batch_y = np.asarray(input_samples)
-        batch_x = np.asarray(input_labels)
+        batch_y = np.asarray(input_samples,dtype=np.float32)
+        batch_x = np.asarray(input_labels,dtype=np.float32)
         #print(np.shape(batch_y))# (1000, 16384)
         #print(np.shape(batch_x))# (1000, 2048)
 
@@ -416,7 +416,9 @@ def score_train(y_true, y_pred):
     # y_pred = np.array(np.floor(y_pred + 0.5), dtype=bool)
     # return 100*np.mean(y_true==y_pred)
 
+import mindspore as ms
 from mindspore import nn
+from mindspore.train.callback import Callback
 class scoreMAE(nn.Metric):
     """定义metric"""
     def __init__(self):
@@ -438,6 +440,35 @@ class scoreMAE(nn.Metric):
 
     def eval(self):
         return self.abs_error_sum / self.samples_num
+
+class SaveCallback(Callback):
+    def __init__(self, eval_model, ds_eval,filepath):
+        super(SaveCallback, self).__init__()
+        self.model = eval_model
+        self.ds_eval = ds_eval
+        self.acc = 0
+        self.train_network = None
+        self.filepath=filepath
+
+    def epoch_end(self, run_context):
+        cb_params = run_context.original_args()
+        result = self.model.eval(self.ds_eval)
+        print("score:",result['score'])
+        if result['score'] > self.acc:
+            print(f"best score update from {self.acc} to {result['score']}")
+            self.acc = result['score']
+            self.train_network = cb_params.train_network
+            # file_name = self.filepath + str(self.acc) + ".ckpt"
+            # ms.save_checkpoint(save_obj=cb_params.train_network, ckpt_file_name=file_name)
+            # print("Save the maximum accuracy checkpoint,the accuracy is", self.acc)
+    
+    def end(self, run_context):
+        if(self.train_network is not None):
+            file_name = self.filepath + str(self.acc) + ".ckpt"
+            ms.save_checkpoint(save_obj=self.train_network, ckpt_file_name=file_name)
+            print("Maximum score checkpoint saved")
+        else:
+            print("no improvement")
 
 class DatasetGenerator:
     def __init__(self,numSamples,H,training):
@@ -464,7 +495,7 @@ class DatasetGenerator:
         else:
             YY = self.Y_val[index]
             XX = self.X_val[index]
-        return YY, XX
+        return ms.Tensor(YY, dtype=ms.float32),ms.Tensor(XX, dtype=ms.float32)
 
     def __len__(self):
         return self.numSamples

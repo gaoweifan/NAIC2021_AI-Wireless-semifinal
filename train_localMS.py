@@ -3,7 +3,7 @@ from main import run
 
 if __name__ == '__main__':
     args = get_parser()
-    args.device_target = "CPU"
+    args.device_target = "Ascend"
     args.device_num = 1
     args.data_url = './data/'
     args.train_url = './Modelsave/'
@@ -13,4 +13,6 @@ if __name__ == '__main__':
     args.batch_size = 1000
     args.numSamples = args.epoch_size*args.batch_size*10
     args.checkpoint_path = None
+    args.run_distribute=True
+    args.data_woker=10
     run(args)
