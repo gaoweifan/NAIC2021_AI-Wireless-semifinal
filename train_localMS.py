@@ -11,7 +11,7 @@ if __name__ == '__main__':
     args.do_eval = True
     args.epoch_size = 1
     args.batch_size = 1000
-    args.numSamples = args.epoch_size*args.batch_size*10
+    # args.numSamples = args.epoch_size*args.batch_size*10
     args.checkpoint_path = None
     args.run_distribute=True
     args.data_woker=10

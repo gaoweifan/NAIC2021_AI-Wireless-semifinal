@@ -98,14 +98,23 @@ def create_dataset(args,H,training=True):
     # dataset_generator = DatasetGenerator(args.numSamples,H,training)
     if(training):
         dataset_generator=generator(args.batch_size,H)
-        dataset = ds.GeneratorDataset(dataset_generator,["data", "label"],num_parallel_workers=args.data_woker, shuffle=False)
+        if args.run_distribute:
+            rank_id = int(os.getenv('RANK_ID'))
+            rank_size = int(os.getenv('RANK_SIZE'))
+            dataset = ds.GeneratorDataset(dataset_generator,["data", "label"],num_parallel_workers=args.data_woker, shuffle=False, num_shards=rank_size, shard_id=rank_id)
+        else:
+            dataset = ds.GeneratorDataset(dataset_generator,["data", "label"],num_parallel_workers=args.data_woker, shuffle=False)
     else:
         import numpy as np
         Y_val=np.load('./data/y_test.npy')
         X_val=np.load('./data/x_test.npy')
         data = (Y_val, X_val)
-        dataset = ds.NumpySlicesDataset(data, ["data", "label"], num_parallel_workers=args.data_woker, shuffle=False)
-    
+        if args.run_distribute:
+            rank_id = int(os.getenv('RANK_ID'))
+            rank_size = int(os.getenv('RANK_SIZE'))
+            dataset = ds.NumpySlicesDataset(data, ["data", "label"], num_parallel_workers=args.data_woker, shuffle=False, num_shards=rank_size, shard_id=rank_id)
+        else:
+            dataset = ds.NumpySlicesDataset(data, ["data", "label"], num_parallel_workers=args.data_woker, shuffle=False)
     # cifar_ds = ds.Cifar10Dataset(data_home)
     # if args.run_distribute:
     #     rank_id = int(os.getenv('RANK_ID'))

@@ -23,8 +23,8 @@ def get_parser():
     parser.add_argument('--do_eval', type=bool, default=False, help='Do eval or not.')
     parser.add_argument('--epoch_size', type=int, default=10, help='Epoch size.')
     parser.add_argument('--batch_size', type=int, default=1000, help='Batch size.')
-    parser.add_argument('--numSamples', type=int, default=10*10*1000, help='number of samples=epoch_size*step_per_epoch*batch_size.')
+    # parser.add_argument('--numSamples', type=int, default=10*10*1000, help='number of samples=epoch_size*step_per_epoch*batch_size.')
     parser.add_argument('--checkpoint_path', type=str, default=None, help='CheckPoint file path.')
-    parser.add_argument('--data_woker', type=int, default=10, help='number of wokers for generating data set.')
+    parser.add_argument('--data_woker', type=int, default=20, help='number of wokers for generating data set.')
     args = parser.parse_args()
     return args
