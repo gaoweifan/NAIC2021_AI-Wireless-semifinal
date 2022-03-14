@@ -91,7 +91,8 @@ def create_dataset(args,H=None,training=True):
         steps_per_epoch=args.data_woker
         # steps_per_epoch=9
         batch_size=args.batch_size
-        epoch=args.epoch_size
+        # epoch=args.epoch_size
+        epoch=1
         Ne=batch_size*steps_per_epoch/9000  # 每轮需要的文件数
         Nf=int(epoch*Ne/args.repeatTimes)  # 需要的总文件数
         if (epoch * Ne / args.repeatTimes != Nf):
