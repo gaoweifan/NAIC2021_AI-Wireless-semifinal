@@ -266,7 +266,7 @@ def generatorXY(batch, H,h_idx=0):
         input_labels.append(XX)
         input_samples.append(YY)
     batch_y = np.asarray(input_samples,dtype=np.float32)
-    batch_x = np.asarray(input_labels,dtype=np.float32)
+    batch_x = np.asarray(input_labels)
     #print(np.shape(batch_y))# (1000, 16384)
     #print(np.shape(batch_x))# (1000, 2048)
 
@@ -296,7 +296,7 @@ def generator(batch,H,h_idx=0):
             input_labels.append(XX)
             input_samples.append(YY)
         batch_y = np.asarray(input_samples,dtype=np.float32)
-        batch_x = np.asarray(input_labels,dtype=np.float32)
+        batch_x = np.asarray(input_labels)
         #print(np.shape(batch_y))# (1000, 16384)
         #print(np.shape(batch_x))# (1000, 2048)
 
@@ -322,7 +322,7 @@ def generator_mp(batch,H,queue,h_idx=0):
         XX = np.concatenate((bits0, bits1, bits2, bits3), 0)
         input_labels.append(XX)
         input_samples.append(YY)
-    batch_y = np.asarray(input_samples)
+    batch_y = np.asarray(input_samples,dtype=np.float32)
     batch_x = np.asarray(input_labels)
     queue.put((batch_y, batch_x))
     # dataSet.append((batch_y, batch_x))
@@ -474,31 +474,77 @@ class SaveCallback(Callback):
             print("no improvement")
 
 class DatasetGenerator:
-    def __init__(self,numSamples,H,training):
-        self.H = H
-        self.training = training
-        if(self.training):
-            self.numSamples = numSamples
-        else:
-            self.Y_val=np.load('./data/y_test.npy')
-            self.X_val=np.load('./data/x_test.npy')
-            self.numSamples = self.Y_val.shape[0]
+    def __init__(self,Nf,repeatTimes):
+        # print("***************DatasetGenerator __init__*****************")
+        # np.random.seed(58)
+        self.__index = 0
+        self.data_load_address = './data'
+        self.Nf=Nf
+        # self.Ne=Ne
+        # self.steps_per_epoch=steps_per_epoch
+        self.repeatTimes=repeatTimes
+        self.batch_x=None
+        self.batch_y=None
 
-    def __getitem__(self, index):
-        if(self.training):
-            bits0 = np.random.binomial(n=1, p=0.5, size=(128 * 4,))
-            bits1 = np.random.binomial(n=1, p=0.5, size=(128 * 4,))
-            bits2 = np.random.binomial(n=1, p=0.5, size=(128 * 4,))
-            bits3 = np.random.binomial(n=1, p=0.5, size=(128 * 4,))
-            X = [bits0, bits1, bits2, bits3]
-            h_idx=index%9000
-            HH = self.H[h_idx]
-            YY = MIMO4x16(X, HH, SNRdb, mode, Pilotnum) / 20  ###
-            XX = np.concatenate((bits0, bits1, bits2, bits3), 0)
-        else:
-            YY = self.Y_val[index]
-            XX = self.X_val[index]
-        return ms.Tensor(YY, dtype=ms.float32),ms.Tensor(XX, dtype=ms.float32)
+    def __next__(self):
+        # if self.__index >= len(self.__data):
+        #     raise StopIteration
+        # else:
+        #     item = (self.__data[self.__index], self.__label[self.__index])
+        #     self.__index += 1
+        #     return item
+        if self.__index >= self.Nf*9000*self.repeatTimes:
+            print("***************DatasetGenerator data reading finished*****************")
+            raise StopIteration
+        if(self.__index%(9000*self.repeatTimes)==0):
+            print(self.__index,"reading data from file")
+            start_time = time.time()
+            dataSetName = os.listdir(self.data_load_address+'/trainSet/')
+            while(len(dataSetName)<=1):
+                print("data not generated yet")
+                time.sleep(5)
+                dataSetName = os.listdir(self.data_load_address+'/trainSet/')
+            fileIdx=1
+            uuidStr=dataSetName[fileIdx].split(".")[0]
+            while(dataSetName.count(uuidStr)==0):
+                fileIdx=(fileIdx+1)%len(dataSetName)
+                if(fileIdx==0):
+                    print(uuidStr,"data not ready")
+                    time.sleep(0.5)
+                    fileIdx=1
+                dataSetName = os.listdir(self.data_load_address+'/trainSet/')
+                uuidStr=dataSetName[fileIdx].split(".")[0]
+            print(uuidStr+'.npy')
+            all=np.load(self.data_load_address+'/trainSet/'+uuidStr+'.npy').astype(np.float32)
+            os.remove(self.data_load_address+'/trainSet/'+uuidStr)
+            os.remove(self.data_load_address+'/trainSet/'+uuidStr+'.npy')
+        
+            batch_x=all[:2048].T
+            batch_y=all[2048:].T
+            end_time = time.time()
+            print('\nTook %f seconds to read 9000 training data\n' % (end_time - start_time))
+            # batch_divider = int(self.steps_per_epoch/self.Ne)#9000/batch_size
+            # batch_ys = np.split(batch_y, batch_divider, 0)
+            # batch_xs = np.split(batch_x, batch_divider, 0)
+            print("repeat dataset")
+            batch_ys = []
+            batch_xs = []
+            for _ in range(self.repeatTimes):
+                batch_ys.append(batch_y)
+                batch_xs.append(batch_x)
+            self.batch_x=np.concatenate(batch_xs,0)
+            print(self.batch_x.shape,self.batch_x.dtype)
+            self.batch_y=np.concatenate(batch_ys,0)
+            print(self.batch_y.shape,self.batch_x.dtype)
+        item = (self.batch_y[self.__index%(9000*self.repeatTimes)],self.batch_x[self.__index%(9000*self.repeatTimes)])
+        self.__index += 1
+        return item
+
+    def __iter__(self):
+        # print("***************DatasetGenerator __iter__*****************")
+        # self.__index = 0
+        return self
 
     def __len__(self):
-        return self.numSamples
+        # print("***************DatasetGenerator __len__*****************")
+        return self.Nf*9000*self.repeatTimes

@@ -14,7 +14,7 @@ from mindspore.context import ParallelMode
 from mindspore.train.callback import ModelCheckpoint, CheckpointConfig, LossMonitor,TimeMonitor, SummaryCollector
 from mindspore import load_checkpoint, load_param_into_net
 from model_define_mindspore import getRxNet
-from utils import scoreMAE,DatasetGenerator,generator,multiGenerator,offLineGenerator,SaveCallback
+from utils import scoreMAE,DatasetGenerator,generator,multiGenerator,SaveCallback
 import time
 
 def run(args):
@@ -40,21 +40,21 @@ def run(args):
 
     model = Model(net, loss_fn=ls, optimizer=opt, metrics={'score':scoreMAE()})
 
-    print()
-    import scipy.io as scio
-    data_home = os.path.join(args.data_url,"Htrain.mat")
-    assert os.path.exists(data_home), "the dataset path is invalid!"
-    mat = scio.loadmat(data_home)
-    x_train = mat['H_train']  # shape=?*antennas*delay*IQ
-    H=x_train[:,:,:,0]+1j*x_train[:,:,:,1]
-    print(H.shape)
+    # print("loading H_train")
+    # import scipy.io as scio
+    # data_home = os.path.join(args.data_url,"Htrain.mat")
+    # assert os.path.exists(data_home), "the dataset path is invalid!"
+    # mat = scio.loadmat(data_home)
+    # x_train = mat['H_train']  # shape=?*antennas*delay*IQ
+    # H=x_train[:,:,:,0]+1j*x_train[:,:,:,1]
+    # print(H.shape)
 
     # as for train, users could use model.train
     if args.do_train:
         from datetime import datetime
         current_time = datetime.now().strftime("%Y%m%d-%H%M%S")
-        dataset = create_dataset(args,H)
-        eval_dataset = create_dataset(args,H,training=False)
+        dataset = create_dataset(args)
+        eval_dataset = create_dataset(args,training=False)
         # batch_num = dataset.get_dataset_size()
         # config_ck = CheckpointConfig(save_checkpoint_steps=batch_num, keep_checkpoint_max=5)
         # ckpoint_cb = ModelCheckpoint(prefix="model", directory=args.train_url, config=config_ck)
@@ -63,7 +63,7 @@ def run(args):
         time_cb = TimeMonitor()
         summary_cb = SummaryCollector(summary_dir=os.path.join('./logs',current_time))
         print("start training")
-        model.train(epoch_size, dataset, callbacks=[save_cb, loss_cb,time_cb,summary_cb])
+        model.train(epoch_size, dataset, callbacks=[save_cb, loss_cb,time_cb,summary_cb],dataset_sink_mode=False)
 
     # as for evaluation, users could use model.eval
     if args.do_eval:
@@ -75,7 +75,7 @@ def run(args):
         print("result: ", res)
 
 
-def create_dataset(args,H,training=True):
+def create_dataset(args,H=None,training=True):
     """
     create data for next use such as training or inferring
     """
@@ -93,9 +93,9 @@ def create_dataset(args,H,training=True):
         batch_size=args.batch_size
         epoch=args.epoch_size
         Ne=batch_size*steps_per_epoch/9000  # 每轮需要的文件数
-        Nf=int(epoch*Ne)  # 需要的总文件数
-        if (epoch * Ne != Nf):
-            print("Nf必须为整数:", epoch * Ne)
+        Nf=int(epoch*Ne/args.repeatTimes)  # 需要的总文件数
+        if (epoch * Ne / args.repeatTimes != Nf):
+            print("Nf必须为整数:", epoch * Ne / args.repeatTimes)
             exit()
         else:
             print("Nf:", Nf)
@@ -105,17 +105,21 @@ def create_dataset(args,H,training=True):
             exit()
         else:
             print("batch_divider:", int(9000 / batch_size))
-        dataset_generator=offLineGenerator(H,Nf,Ne,steps_per_epoch)
+        dataset_generator=DatasetGenerator(Nf,args.repeatTimes)
         if args.run_distribute:
             rank_id = int(os.getenv('RANK_ID'))
             rank_size = int(os.getenv('RANK_SIZE'))
             dataset = ds.GeneratorDataset(dataset_generator,["data", "label"], shuffle=False, num_shards=rank_size, shard_id=rank_id)
         else:
             dataset = ds.GeneratorDataset(dataset_generator,["data", "label"], shuffle=False)
+        dataset = dataset.batch(batch_size)
     else:
         import numpy as np
-        Y_val=np.load('./data/y_test.npy')
-        X_val=np.load('./data/x_test.npy')
+        print("loading test set")
+        Y_val=np.load('./data/y_test.npy').astype(np.float32)
+        print(Y_val.shape,Y_val.dtype)
+        X_val=np.load('./data/x_test.npy').astype(np.float32)
+        print(X_val.shape,X_val.dtype)
         data = (Y_val, X_val)
         if args.run_distribute:
             rank_id = int(os.getenv('RANK_ID'))

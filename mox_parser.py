@@ -26,5 +26,6 @@ def get_parser():
     # parser.add_argument('--numSamples', type=int, default=10*10*1000, help='number of samples=epoch_size*step_per_epoch*batch_size.')
     parser.add_argument('--checkpoint_path', type=str, default=None, help='CheckPoint file path.')
     parser.add_argument('--data_woker', type=int, default=9, help='number of wokers for generating data set.')
+    parser.add_argument('--repeatTimes', type=int, default=1, help='repeat times for generating data set.')
     args = parser.parse_args()
     return args
