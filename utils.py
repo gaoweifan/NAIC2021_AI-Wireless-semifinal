@@ -427,18 +427,17 @@ class scoreMAE(nn.Metric):
     def __init__(self):
         super(scoreMAE, self).__init__()
         self.clear()
-        self.floor = ms.ops.Floor()
 
     def clear(self):
         self.abs_error_sum = 0
         self.samples_num = 0
 
     def update(self, *inputs):
-        y_pred = inputs[0]
-        y_pred = self.floor(y_pred + 0.5)
-        y = inputs[1]
-        y = self.floor(y + 0.5)
-        error_abs = (y.reshape(y_pred.shape) - y_pred).abs()
+        y_pred = inputs[0].asnumpy()
+        y_pred = np.floor(y_pred + 0.5)
+        y = inputs[1].asnumpy()
+        y = np.floor(y + 0.5)
+        error_abs = np.abs(y.reshape(y_pred.shape) - y_pred)
         self.abs_error_sum += error_abs.sum()
         self.samples_num += y.shape[0]
 

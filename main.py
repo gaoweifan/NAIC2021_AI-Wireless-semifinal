@@ -58,7 +58,7 @@ def run(args):
         # batch_num = dataset.get_dataset_size()
         config_ck = CheckpointConfig(save_checkpoint_steps=args.data_woker, keep_checkpoint_max=5)
         ckpoint_cb = ModelCheckpoint(prefix="model", directory=args.train_url, config=config_ck)
-        save_cb = SaveCallback(model,eval_dataset,os.path.join(args.train_url,current_time),args.data_woker)
+        save_cb = SaveCallback(model,eval_dataset,os.path.join(args.train_url,current_time),10*args.data_woker)
         loss_cb = LossMonitor()
         # time_cb = TimeMonitor()
         summary_cb = SummaryCollector(summary_dir=os.path.join('./logs',current_time))
