@@ -427,17 +427,18 @@ class scoreMAE(nn.Metric):
     def __init__(self):
         super(scoreMAE, self).__init__()
         self.clear()
+        self.floor = ms.ops.Floor()
 
     def clear(self):
         self.abs_error_sum = 0
         self.samples_num = 0
 
     def update(self, *inputs):
-        y_pred = inputs[0].asnumpy()
-        y_pred = np.floor(y_pred + 0.5)
-        y = inputs[1].asnumpy()
-        y = np.floor(y + 0.5)
-        error_abs = np.abs(y.reshape(y_pred.shape) - y_pred)
+        y_pred = inputs[0]
+        y_pred = self.floor(y_pred + 0.5)
+        y = inputs[1]
+        y = self.floor(y + 0.5)
+        error_abs = (y.reshape(y_pred.shape) - y_pred).abs()
         self.abs_error_sum += error_abs.sum()
         self.samples_num += y.shape[0]
 
@@ -464,8 +465,8 @@ class SaveCallback(Callback):
         if self._per_print_times != 0 and (cb_params.cur_step_num - self._last_print_time) >= self._per_print_times:
             self._last_print_time = cb_params.cur_step_num
             print('%f seconds per epoch' % (time.time() - self.start_time))
-            self.start_time = time.time()
-            print(cb_params)
+            
+            # print(cb_params)
             # print(cb_params.train_dataset)
             # print(cb_params.epoch_num)
             # print(cb_params.batch_num)
@@ -486,6 +487,7 @@ class SaveCallback(Callback):
                 # file_name = self.filepath + str(self.acc) + ".ckpt"
                 # ms.save_checkpoint(save_obj=cb_params.train_network, ckpt_file_name=file_name)
                 # print("Save the maximum accuracy checkpoint,the accuracy is", self.acc)
+            self.start_time = time.time()
     
     def end(self, run_context):
         if(self.train_network is not None):

@@ -56,14 +56,14 @@ def run(args):
         dataset = create_dataset(args)
         eval_dataset = create_dataset(args,training=False)
         # batch_num = dataset.get_dataset_size()
-        # config_ck = CheckpointConfig(save_checkpoint_steps=batch_num, keep_checkpoint_max=5)
-        # ckpoint_cb = ModelCheckpoint(prefix="model", directory=args.train_url, config=config_ck)
+        config_ck = CheckpointConfig(save_checkpoint_steps=args.data_woker, keep_checkpoint_max=5)
+        ckpoint_cb = ModelCheckpoint(prefix="model", directory=args.train_url, config=config_ck)
         save_cb = SaveCallback(model,eval_dataset,os.path.join(args.train_url,current_time),args.data_woker)
         loss_cb = LossMonitor()
-        time_cb = TimeMonitor()
+        # time_cb = TimeMonitor()
         summary_cb = SummaryCollector(summary_dir=os.path.join('./logs',current_time))
         print("start training")
-        model.train(1, dataset, callbacks=[save_cb, loss_cb,time_cb,summary_cb],dataset_sink_mode=False)
+        model.train(1, dataset, callbacks=[save_cb, loss_cb,ckpoint_cb,summary_cb],dataset_sink_mode=False)
 
     # as for evaluation, users could use model.eval
     if args.do_eval:
@@ -127,7 +127,7 @@ def create_dataset(args,H=None,training=True):
             rank_size = int(os.getenv('RANK_SIZE'))
             dataset = ds.NumpySlicesDataset(data, ["data", "label"], shuffle=False, num_shards=rank_size, shard_id=rank_id)
         else:
-            dataset = ds.NumpySlicesDataset(data, ["data", "label"], num_parallel_workers=24, shuffle=False)
+            dataset = ds.NumpySlicesDataset(data, ["data", "label"], shuffle=False)
     # cifar_ds = ds.Cifar10Dataset(data_home)
     # if args.run_distribute:
     #     rank_id = int(os.getenv('RANK_ID'))
