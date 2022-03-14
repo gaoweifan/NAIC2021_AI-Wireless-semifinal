@@ -17,4 +17,5 @@ if __name__ == '__main__':
     args.checkpoint_path = None
     args.run_distribute=False
     args.loadModelName=None
+    args.learning_rate=0.001
     run(args)

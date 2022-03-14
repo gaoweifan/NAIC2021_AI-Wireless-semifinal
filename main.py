@@ -8,7 +8,7 @@ import mindspore.dataset.vision.c_transforms as C
 import mindspore.dataset.transforms.c_transforms as C2
 from mindspore.nn import MSELoss
 from mindspore.communication import init
-from mindspore.nn import Momentum,Metric
+from mindspore.nn import Momentum,Metric,Adam
 from mindspore import Model, context
 from mindspore.context import ParallelMode
 from mindspore.train.callback import ModelCheckpoint, CheckpointConfig, LossMonitor,TimeMonitor, SummaryCollector
@@ -36,7 +36,7 @@ def run(args):
     # epoch_size = args.epoch_size
     net = getRxNet()
     ls = MSELoss(reduction="mean")
-    opt = Momentum(net.trainable_params(), learning_rate=0.01, momentum=0.9)
+    opt = Adam(net.trainable_params(), learning_rate=args.learning_rate)
 
     if(args.loadModelName is not None):
         param_dict = load_checkpoint(os.path.join(args.train_url,args.checkpoint_path))

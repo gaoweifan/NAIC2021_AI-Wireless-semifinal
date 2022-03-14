@@ -28,5 +28,6 @@ def get_parser():
     parser.add_argument('--data_woker', type=int, default=9, help='number of wokers for generating data set.')
     parser.add_argument('--repeatTimes', type=int, default=1, help='repeat times for generating data set.')
     parser.add_argument('--loadModelName', type=str, default=None, help='model file name to load.')
+    parser.add_argument('--learning_rate', type=float, default=0.001, help='set learning rate')
     args = parser.parse_args()
     return args
