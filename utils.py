@@ -462,7 +462,10 @@ class SaveCallback(Callback):
         cb_params = run_context.original_args()
         if self._per_print_times != 0 and (cb_params.cur_step_num - self._last_print_time) >= self._per_print_times:
             self._last_print_time = cb_params.cur_step_num
+            start_time = time.time()
             result = self.model.eval(self.ds_eval)
+            end_time = time.time()
+            print('Took %f seconds to evaluate' % (end_time - start_time))
             print("score:",result['score'])
             if result['score'] > self.acc:
                 print(f"best score update from {self.acc} to {result['score']}")
