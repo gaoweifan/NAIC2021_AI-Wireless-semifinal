@@ -14,5 +14,5 @@ if __name__ == '__main__':
     # args.numSamples = args.epoch_size*args.batch_size*10
     args.checkpoint_path = None
     args.run_distribute=True
-    args.data_woker=10
+    args.data_woker=9
     run(args)

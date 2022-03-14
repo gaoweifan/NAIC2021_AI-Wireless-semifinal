@@ -17,8 +17,8 @@ if __name__=="__main__":
     ###########################以下仅为信道数据载入范例############
     import scipy.io as scio
     print("loading H_train")
-    data_load_address = '/code/data'
-    mat = scio.loadmat('/dataset/Htrain.mat')
+    data_load_address = './data'
+    mat = scio.loadmat('./data/Htrain.mat')
     h_train = mat['H_train']  # shape=?*antennas*delay*IQ
     print(np.shape(h_train))
     H=h_train[:,:,:,0]+1j*h_train[:,:,:,1]
@@ -68,9 +68,9 @@ if __name__=="__main__":
         # print('Took %f seconds to save x_train' % (end_time - start_time))
         # print("done")
         print("saving data set")
-        for _ in range(5):
+        for _ in range(1):
             dataSetName = os.listdir(data_load_address+'/trainSet/')
-            while(len(dataSetName)>480):#存满了
+            while(len(dataSetName)>150):#存满了
                 print("data full")
                 time.sleep(600)
                 dataSetName = os.listdir(data_load_address+'/trainSet/')

@@ -16,8 +16,8 @@ if __name__=="__main__":
     ###########################以下仅为信道数据载入范例############
     import scipy.io as scio
     print("loading H_train")
-    data_load_address = '/code/data'
-    mat = scio.loadmat('/dataset/Htrain.mat')
+    data_load_address = './data'
+    mat = scio.loadmat('./data/Htrain.mat')
     h_train = mat['H_train']  # shape=?*antennas*delay*IQ
     print(np.shape(h_train))
     H=h_train[:,:,:,0]+1j*h_train[:,:,:,1]

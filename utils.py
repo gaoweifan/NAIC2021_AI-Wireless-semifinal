@@ -265,8 +265,8 @@ def generatorXY(batch, H,h_idx=0):
         XX = np.concatenate((bits0, bits1, bits2, bits3), 0)
         input_labels.append(XX)
         input_samples.append(YY)
-    batch_y = np.asarray(input_samples)
-    batch_x = np.asarray(input_labels)
+    batch_y = np.asarray(input_samples,dtype=np.float32)
+    batch_x = np.asarray(input_labels,dtype=np.float32)
     #print(np.shape(batch_y))# (1000, 16384)
     #print(np.shape(batch_x))# (1000, 2048)
 
@@ -364,7 +364,7 @@ def multiGenerator(H,epoch,each_batch=1000,batch_divider=1,worker=10):
 # 每轮样本数  =9000*Ne
 # 每批次样本数=9000*Ne/steps_per_epoch
 def offLineGenerator(H,Nf,Ne,steps_per_epoch):
-    data_load_address = '/code/data'
+    data_load_address = './data'
     i=0
     while True:
         i=i+1
@@ -391,7 +391,7 @@ def offLineGenerator(H,Nf,Ne,steps_per_epoch):
                 dataSetName = os.listdir(data_load_address+'/trainSet/')
                 uuidStr=dataSetName[fileIdx].split(".")[0]
             print(uuidStr+'.npy')
-            all=np.load(data_load_address+'/trainSet/'+uuidStr+'.npy')
+            all=np.load(data_load_address+'/trainSet/'+uuidStr+'.npy').astype(np.float32)
             os.remove(data_load_address+'/trainSet/'+uuidStr)
             os.remove(data_load_address+'/trainSet/'+uuidStr+'.npy')
             batch_x=all[:2048].T
@@ -401,6 +401,9 @@ def offLineGenerator(H,Nf,Ne,steps_per_epoch):
             batch_divider = int(steps_per_epoch/Ne)#9000/batch_size
             batch_ys = np.split(batch_y, batch_divider, 0)
             batch_xs = np.split(batch_x, batch_divider, 0)
+            for _ in range(5):
+                batch_ys.extend(batch_ys)
+                batch_xs.extend(batch_xs)
         for i,devided_batch_y in enumerate(batch_ys):
             yield (devided_batch_y, batch_xs[i])
 

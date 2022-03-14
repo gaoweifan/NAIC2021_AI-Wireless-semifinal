@@ -1,20 +1,3 @@
-# Copyright 2020 Huawei Technologies Co., Ltd
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ============================================================================
-"""cifar_resnet50
-This sample code is applicable to Ascend.
-"""
 import os
 import random
 import argparse
@@ -31,7 +14,7 @@ from mindspore.context import ParallelMode
 from mindspore.train.callback import ModelCheckpoint, CheckpointConfig, LossMonitor,TimeMonitor, SummaryCollector
 from mindspore import load_checkpoint, load_param_into_net
 from model_define_mindspore import getRxNet
-from utils import scoreMAE,DatasetGenerator,generator,SaveCallback
+from utils import scoreMAE,DatasetGenerator,generator,multiGenerator,offLineGenerator,SaveCallback
 import time
 
 def run(args):
@@ -53,10 +36,11 @@ def run(args):
     epoch_size = args.epoch_size
     net = getRxNet()
     ls = MSELoss(reduction="mean")
-    opt = Momentum(filter(lambda x: x.requires_grad, net.get_parameters()), learning_rate=0.01, momentum=0.9)
+    opt = Momentum(net.trainable_params(), learning_rate=0.01, momentum=0.9)
 
     model = Model(net, loss_fn=ls, optimizer=opt, metrics={'score':scoreMAE()})
 
+    print()
     import scipy.io as scio
     data_home = os.path.join(args.data_url,"Htrain.mat")
     assert os.path.exists(data_home), "the dataset path is invalid!"
@@ -97,13 +81,37 @@ def create_dataset(args,H,training=True):
     """
     # dataset_generator = DatasetGenerator(args.numSamples,H,training)
     if(training):
-        dataset_generator=generator(args.batch_size,H)
+        # dataset_generator=generator(args.batch_size,H)
+        # batch_divider=2  # 每批次样本数=each_batch/batch_divider
+        # each_batch=args.batch_size*batch_divider
+        # worker=args.data_woker  # 每轮样本数=each_batch*worker
+        # epoch=args.epoch_size  # 总样本数=each_batch*worker*epoch
+        # steps_per_epoch=worker*batch_divider
+        # dataset_generator=multiGenerator(H,epoch,each_batch,batch_divider,worker)
+        steps_per_epoch=args.data_woker
+        # steps_per_epoch=9
+        batch_size=args.batch_size
+        epoch=args.epoch_size
+        Ne=batch_size*steps_per_epoch/9000  # 每轮需要的文件数
+        Nf=int(epoch*Ne)  # 需要的总文件数
+        if (epoch * Ne != Nf):
+            print("Nf必须为整数:", epoch * Ne)
+            exit()
+        else:
+            print("Nf:", Nf)
+            print("Nf per epoch:", Ne)
+        if (9000 / batch_size != int(9000 / batch_size)):
+            print("batch_divider=9000/batch_size必须为整数:", 9000 / batch_size)
+            exit()
+        else:
+            print("batch_divider:", int(9000 / batch_size))
+        dataset_generator=offLineGenerator(H,Nf,Ne,steps_per_epoch)
         if args.run_distribute:
             rank_id = int(os.getenv('RANK_ID'))
             rank_size = int(os.getenv('RANK_SIZE'))
-            dataset = ds.GeneratorDataset(dataset_generator,["data", "label"],num_parallel_workers=args.data_woker, shuffle=False, num_shards=rank_size, shard_id=rank_id)
+            dataset = ds.GeneratorDataset(dataset_generator,["data", "label"], shuffle=False, num_shards=rank_size, shard_id=rank_id)
         else:
-            dataset = ds.GeneratorDataset(dataset_generator,["data", "label"],num_parallel_workers=args.data_woker, shuffle=False)
+            dataset = ds.GeneratorDataset(dataset_generator,["data", "label"], shuffle=False)
     else:
         import numpy as np
         Y_val=np.load('./data/y_test.npy')
@@ -112,9 +120,9 @@ def create_dataset(args,H,training=True):
         if args.run_distribute:
             rank_id = int(os.getenv('RANK_ID'))
             rank_size = int(os.getenv('RANK_SIZE'))
-            dataset = ds.NumpySlicesDataset(data, ["data", "label"], num_parallel_workers=args.data_woker, shuffle=False, num_shards=rank_size, shard_id=rank_id)
+            dataset = ds.NumpySlicesDataset(data, ["data", "label"], shuffle=False, num_shards=rank_size, shard_id=rank_id)
         else:
-            dataset = ds.NumpySlicesDataset(data, ["data", "label"], num_parallel_workers=args.data_woker, shuffle=False)
+            dataset = ds.NumpySlicesDataset(data, ["data", "label"], shuffle=False)
     # cifar_ds = ds.Cifar10Dataset(data_home)
     # if args.run_distribute:
     #     rank_id = int(os.getenv('RANK_ID'))
