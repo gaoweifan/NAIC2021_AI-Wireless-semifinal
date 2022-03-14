@@ -116,18 +116,18 @@ def create_dataset(args,H=None,training=True):
     else:
         import numpy as np
         print("loading test set")
-        Y_val=np.load('./data/y_test.npy').astype(np.float32)
+        Y_val=np.load('./data/y_test.npy').astype(np.float32)[:1000]
         print(Y_val.shape,Y_val.dtype)
-        X_val=np.load('./data/x_test.npy').astype(np.float32)
+        X_val=np.load('./data/x_test.npy').astype(np.float32)[:1000]
         print(X_val.shape,X_val.dtype)
         data = (Y_val, X_val)
-        dataset = data
-        # if args.run_distribute:
-        #     rank_id = int(os.getenv('RANK_ID'))
-        #     rank_size = int(os.getenv('RANK_SIZE'))
-        #     dataset = ds.NumpySlicesDataset(data, ["data", "label"], shuffle=False, num_shards=rank_size, shard_id=rank_id)
-        # else:
-        #     dataset = ds.NumpySlicesDataset(data, ["data", "label"], shuffle=False)
+        # dataset = data
+        if args.run_distribute:
+            rank_id = int(os.getenv('RANK_ID'))
+            rank_size = int(os.getenv('RANK_SIZE'))
+            dataset = ds.NumpySlicesDataset(data, ["data", "label"], shuffle=False, num_shards=rank_size, shard_id=rank_id)
+        else:
+            dataset = ds.NumpySlicesDataset(data, ["data", "label"], num_parallel_workers=1, shuffle=False)
     # cifar_ds = ds.Cifar10Dataset(data_home)
     # if args.run_distribute:
     #     rank_id = int(os.getenv('RANK_ID'))
