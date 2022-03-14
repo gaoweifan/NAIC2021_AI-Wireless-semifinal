@@ -44,7 +44,9 @@ def run(args):
         load_param_into_net(opt, param_dict)
 
     model = Model(net, loss_fn=ls, optimizer=opt, metrics={'score':scoreMAE()})
-
+    for m in net.parameters_and_names():
+        print(m)
+    
     # print("loading H_train")
     # import scipy.io as scio
     # data_home = os.path.join(args.data_url,"Htrain.mat")

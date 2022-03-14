@@ -1,5 +1,6 @@
 import mindspore.nn as nn
 from mindspore.common.initializer import Normal
+from mindspore import ops
 
 class rxNet(nn.Cell):
     """
@@ -8,14 +9,16 @@ class rxNet(nn.Cell):
     def __init__(self):
         super(rxNet, self).__init__()
         # 定义所需要的运算
+        self.reshape=ops.Reshape()
+        self.transpose=ops.Transpose()
         self.conv1 = nn.Conv3d(2, 2, (7, 2, 2), pad_mode='same')
         self.bn1 = nn.BatchNorm3d(2)
-        self.conv2 = nn.Conv3d(2, 8, (7, 2, 2), pad_mode='same')
-        self.bn2 = nn.BatchNorm3d(8)
-        self.conv3 = nn.Conv3d(8, 16, (7, 2, 2), pad_mode='same')
-        self.bn3 = nn.BatchNorm3d(16)
-        self.conv4 = nn.Conv3d(16, 2, (7, 2, 2), pad_mode='same')
-        self.bn4 = nn.BatchNorm3d(2)
+        # self.conv2 = nn.Conv3d(2, 8, (7, 2, 2), pad_mode='same')
+        # self.bn2 = nn.BatchNorm3d(8)
+        # self.conv3 = nn.Conv3d(8, 16, (7, 2, 2), pad_mode='same')
+        # self.bn3 = nn.BatchNorm3d(16)
+        # self.conv4 = nn.Conv3d(16, 2, (7, 2, 2), pad_mode='same')
+        # self.bn4 = nn.BatchNorm3d(2)
         self.relu = nn.ReLU()
         
         self.flatten = nn.Flatten()
@@ -24,8 +27,8 @@ class rxNet(nn.Cell):
 
     def construct(self, x):
         # 使用定义好的运算构建前向网络
-        x = x.reshape((-1,256,16,2,2))
-        x = x.transpose((0,3,1,2,4))
+        x = self.reshape(x,(-1,256,16,2,2))
+        x = self.transpose(x,(0,3,1,2,4))
 
         x = self.conv1(x)
         x = self.bn1(x)
