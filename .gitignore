@@ -6,6 +6,7 @@
 *.bin
 *.csv
 logs
+rank_0
 data
 
 # Byte-compiled / optimized / DLL files
