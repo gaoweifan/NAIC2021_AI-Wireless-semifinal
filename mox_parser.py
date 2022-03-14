@@ -27,5 +27,6 @@ def get_parser():
     parser.add_argument('--checkpoint_path', type=str, default=None, help='CheckPoint file path.')
     parser.add_argument('--data_woker', type=int, default=9, help='number of wokers for generating data set.')
     parser.add_argument('--repeatTimes', type=int, default=1, help='repeat times for generating data set.')
+    parser.add_argument('--loadModelName', type=str, default=None, help='model file name to load.')
     args = parser.parse_args()
     return args

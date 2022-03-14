@@ -38,6 +38,11 @@ def run(args):
     ls = MSELoss(reduction="mean")
     opt = Momentum(net.trainable_params(), learning_rate=0.01, momentum=0.9)
 
+    if(args.loadModelName is not None):
+        param_dict = load_checkpoint(os.path.join(args.train_url,args.checkpoint_path))
+        load_param_into_net(net, param_dict)
+        load_param_into_net(opt, param_dict)
+
     model = Model(net, loss_fn=ls, optimizer=opt, metrics={'score':scoreMAE()})
 
     # print("loading H_train")
