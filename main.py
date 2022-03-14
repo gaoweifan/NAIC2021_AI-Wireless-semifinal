@@ -33,7 +33,7 @@ def run(args):
                                           all_reduce_fusion_config=[140])
         init()
 
-    epoch_size = args.epoch_size
+    # epoch_size = args.epoch_size
     net = getRxNet()
     ls = MSELoss(reduction="mean")
     opt = Momentum(net.trainable_params(), learning_rate=0.01, momentum=0.9)
@@ -63,7 +63,7 @@ def run(args):
         time_cb = TimeMonitor()
         summary_cb = SummaryCollector(summary_dir=os.path.join('./logs',current_time))
         print("start training")
-        model.train(epoch_size, dataset, callbacks=[save_cb, loss_cb,time_cb,summary_cb],dataset_sink_mode=False)
+        model.train(1, dataset, callbacks=[save_cb, loss_cb,time_cb,summary_cb],dataset_sink_mode=False)
 
     # as for evaluation, users could use model.eval
     if args.do_eval:
@@ -91,8 +91,7 @@ def create_dataset(args,H=None,training=True):
         steps_per_epoch=args.data_woker
         # steps_per_epoch=9
         batch_size=args.batch_size
-        # epoch=args.epoch_size
-        epoch=1
+        epoch=args.epoch_size
         Ne=batch_size*steps_per_epoch/9000  # 每轮需要的文件数
         Nf=int(epoch*Ne/args.repeatTimes)  # 需要的总文件数
         if (epoch * Ne / args.repeatTimes != Nf):
