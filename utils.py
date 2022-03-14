@@ -457,11 +457,23 @@ class SaveCallback(Callback):
                              "but got {}".format(per_print_times))
         self._per_print_times = per_print_times
         self._last_print_time = 0
+        self.start_time = time.time()
 
     def step_end(self, run_context):
         cb_params = run_context.original_args()
         if self._per_print_times != 0 and (cb_params.cur_step_num - self._last_print_time) >= self._per_print_times:
             self._last_print_time = cb_params.cur_step_num
+            print('%f seconds per epoch' % (time.time() - self.start_time))
+            self.start_time = time.time()
+            print(cb_params)
+            print(cb_params.train_dataset)
+            print(cb_params.epoch_num)
+            print(cb_params.batch_num)
+            print(cb_params.train_network)
+            print(cb_params.cur_epoch_num)
+            print(cb_params.cur_step_num)
+            print(cb_params.parallel_mode)
+            print(cb_params.net_outputs)
             start_time = time.time()
             result = self.model.eval(self.ds_eval)
             end_time = time.time()
