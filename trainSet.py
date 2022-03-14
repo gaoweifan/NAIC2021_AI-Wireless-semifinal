@@ -70,7 +70,7 @@ if __name__=="__main__":
         print("saving data set")
         for _ in range(1):
             dataSetName = os.listdir(data_load_address+'/trainSet/')
-            while(len(dataSetName)>300):#存满了
+            while(len(dataSetName)>200):#存满了
                 print("data full")
                 time.sleep(600)
                 dataSetName = os.listdir(data_load_address+'/trainSet/')
