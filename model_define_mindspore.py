@@ -31,17 +31,17 @@ class rxNet(nn.Cell):
         x = self.bn1(x)
         x = self.relu(x)
         
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = self.relu(x)
+        # x = self.conv2(x)
+        # x = self.bn2(x)
+        # x = self.relu(x)
 
-        x = self.conv3(x)
-        x = self.bn3(x)
-        x = self.relu(x)
+        # x = self.conv3(x)
+        # x = self.bn3(x)
+        # x = self.relu(x)
 
-        x = self.conv4(x)
-        x = self.bn4(x)
-        x = self.relu(x)
+        # x = self.conv4(x)
+        # x = self.bn4(x)
+        # x = self.relu(x)
 
         x = self.flatten(x)
         x = self.fc(x)

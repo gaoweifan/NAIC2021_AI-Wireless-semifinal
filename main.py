@@ -39,7 +39,7 @@ def run(args):
     opt = Adam(net.trainable_params(), learning_rate=args.learning_rate)
 
     if(args.loadModelName is not None):
-        param_dict = load_checkpoint(os.path.join(args.train_url,args.checkpoint_path))
+        param_dict = load_checkpoint(os.path.join(args.train_url,args.loadModelName))
         load_param_into_net(net, param_dict)
         load_param_into_net(opt, param_dict)
 
