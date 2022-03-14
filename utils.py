@@ -445,25 +445,32 @@ class scoreMAE(nn.Metric):
         return self.abs_error_sum / self.samples_num
 
 class SaveCallback(Callback):
-    def __init__(self, eval_model, ds_eval,filepath):
+    def __init__(self, eval_model, ds_eval,filepath, per_print_times=1):
         super(SaveCallback, self).__init__()
         self.model = eval_model
         self.ds_eval = ds_eval
         self.acc = 0
         self.train_network = None
         self.filepath=filepath
+        if not isinstance(per_print_times, int) or per_print_times < 0:
+            raise ValueError("The argument 'per_print_times' must be int and >= 0, "
+                             "but got {}".format(per_print_times))
+        self._per_print_times = per_print_times
+        self._last_print_time = 0
 
-    def epoch_end(self, run_context):
+    def step_end(self, run_context):
         cb_params = run_context.original_args()
-        result = self.model.eval(self.ds_eval)
-        print("score:",result['score'])
-        if result['score'] > self.acc:
-            print(f"best score update from {self.acc} to {result['score']}")
-            self.acc = result['score']
-            self.train_network = cb_params.train_network
-            # file_name = self.filepath + str(self.acc) + ".ckpt"
-            # ms.save_checkpoint(save_obj=cb_params.train_network, ckpt_file_name=file_name)
-            # print("Save the maximum accuracy checkpoint,the accuracy is", self.acc)
+        if self._per_print_times != 0 and (cb_params.cur_step_num - self._last_print_time) >= self._per_print_times:
+            self._last_print_time = cb_params.cur_step_num
+            result = self.model.eval(self.ds_eval)
+            print("score:",result['score'])
+            if result['score'] > self.acc:
+                print(f"best score update from {self.acc} to {result['score']}")
+                self.acc = result['score']
+                self.train_network = cb_params.train_network
+                # file_name = self.filepath + str(self.acc) + ".ckpt"
+                # ms.save_checkpoint(save_obj=cb_params.train_network, ckpt_file_name=file_name)
+                # print("Save the maximum accuracy checkpoint,the accuracy is", self.acc)
     
     def end(self, run_context):
         if(self.train_network is not None):
