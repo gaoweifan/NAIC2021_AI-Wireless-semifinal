@@ -9,7 +9,7 @@ if __name__ == '__main__':
     args.train_url = './Modelsave/'
     args.do_train = True
     args.do_eval = False
-    args.epoch_size = 1
+    args.epoch_size = 10
     args.batch_size = 1000
     args.data_woker=9
     args.repeatTimes=1
