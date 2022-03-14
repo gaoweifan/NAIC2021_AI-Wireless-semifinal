@@ -127,7 +127,7 @@ def create_dataset(args,H=None,training=True):
             rank_size = int(os.getenv('RANK_SIZE'))
             dataset = ds.NumpySlicesDataset(data, ["data", "label"], shuffle=False, num_shards=rank_size, shard_id=rank_id)
         else:
-            dataset = ds.NumpySlicesDataset(data, ["data", "label"], num_parallel_workers=1, shuffle=False)
+            dataset = ds.NumpySlicesDataset(data, ["data", "label"], num_parallel_workers=24, shuffle=False)
     # cifar_ds = ds.Cifar10Dataset(data_home)
     # if args.run_distribute:
     #     rank_id = int(os.getenv('RANK_ID'))
