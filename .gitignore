@@ -5,6 +5,7 @@
 *.npy
 *.bin
 *.csv
+*.meta
 logs
 rank_0
 data
