@@ -1,6 +1,6 @@
-for i in $(seq 1 30)
+for i in $(seq 1 18)
   do  
     echo -e "starting ${i}"
 	  python trainSet.py &
-	  sleep 13
+	  sleep 14
   done

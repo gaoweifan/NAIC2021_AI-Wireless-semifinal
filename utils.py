@@ -363,7 +363,7 @@ def multiGenerator(H,epoch,each_batch=1000,batch_divider=1,worker=10):
 # 总样本数    =9000*Nf
 # 每轮样本数  =9000*Ne
 # 每批次样本数=9000*Ne/steps_per_epoch
-def offLineGenerator(H,Nf,Ne,steps_per_epoch):
+def offLineGenerator(H,Nf,Ne,steps_per_epoch,repeatTimes=1):
     data_load_address = './data'
     i=0
     while True:
@@ -401,7 +401,7 @@ def offLineGenerator(H,Nf,Ne,steps_per_epoch):
             batch_divider = int(steps_per_epoch/Ne)#9000/batch_size
             batch_ys = np.split(batch_y, batch_divider, 0)
             batch_xs = np.split(batch_x, batch_divider, 0)
-            for _ in range(5):
+            for _ in range(repeatTimes):
                 batch_ys.extend(batch_ys)
                 batch_xs.extend(batch_xs)
         for i,devided_batch_y in enumerate(batch_ys):
@@ -419,155 +419,155 @@ def score_train(y_true, y_pred):
     # y_pred = np.array(np.floor(y_pred + 0.5), dtype=bool)
     # return 100*np.mean(y_true==y_pred)
 
-import mindspore as ms
-from mindspore import nn
-from mindspore.train.callback import Callback
-class scoreMAE(nn.Metric):
-    """定义metric"""
-    def __init__(self):
-        super(scoreMAE, self).__init__()
-        self.clear()
+# import mindspore as ms
+# from mindspore import nn
+# from mindspore.train.callback import Callback
+# class scoreMAE(nn.Metric):
+#     """定义metric"""
+#     def __init__(self):
+#         super(scoreMAE, self).__init__()
+#         self.clear()
 
-    def clear(self):
-        self.abs_error_sum = 0
-        self.samples_num = 0
+#     def clear(self):
+#         self.abs_error_sum = 0
+#         self.samples_num = 0
 
-    def update(self, *inputs):
-        y_pred = inputs[0].asnumpy()
-        y_pred = np.floor(y_pred + 0.5)
-        y = inputs[1].asnumpy()
-        y = np.floor(y + 0.5)
-        error_abs = np.abs(y.reshape(y_pred.shape) - y_pred)
-        self.abs_error_sum += error_abs.sum()
-        self.samples_num += y.shape[0]
+#     def update(self, *inputs):
+#         y_pred = inputs[0].asnumpy()
+#         y_pred = np.floor(y_pred + 0.5)
+#         y = inputs[1].asnumpy()
+#         y = np.floor(y + 0.5)
+#         error_abs = np.abs(y.reshape(y_pred.shape) - y_pred)
+#         self.abs_error_sum += error_abs.sum()
+#         self.samples_num += y.shape[0]
 
-    def eval(self):
-        return self.abs_error_sum / self.samples_num
+#     def eval(self):
+#         return self.abs_error_sum / self.samples_num
 
-class SaveCallback(Callback):
-    def __init__(self, eval_model, ds_eval,filepath, per_print_times=1):
-        super(SaveCallback, self).__init__()
-        self.model = eval_model
-        self.ds_eval = ds_eval
-        self.acc = 0
-        self.train_network = None
-        self.filepath=filepath
-        if not isinstance(per_print_times, int) or per_print_times < 0:
-            raise ValueError("The argument 'per_print_times' must be int and >= 0, "
-                             "but got {}".format(per_print_times))
-        self._per_print_times = per_print_times
-        self._last_print_time = 0
-        self.start_time = time.time()
+# class SaveCallback(Callback):
+#     def __init__(self, eval_model, ds_eval,filepath, per_print_times=1):
+#         super(SaveCallback, self).__init__()
+#         self.model = eval_model
+#         self.ds_eval = ds_eval
+#         self.acc = 0
+#         self.train_network = None
+#         self.filepath=filepath
+#         if not isinstance(per_print_times, int) or per_print_times < 0:
+#             raise ValueError("The argument 'per_print_times' must be int and >= 0, "
+#                              "but got {}".format(per_print_times))
+#         self._per_print_times = per_print_times
+#         self._last_print_time = 0
+#         self.start_time = time.time()
 
-    def step_end(self, run_context):
-        cb_params = run_context.original_args()
-        if self._per_print_times != 0 and (cb_params.cur_step_num - self._last_print_time) >= self._per_print_times:
-            self._last_print_time = cb_params.cur_step_num
-            print('%f seconds per epoch' % (time.time() - self.start_time))
+#     def step_end(self, run_context):
+#         cb_params = run_context.original_args()
+#         if self._per_print_times != 0 and (cb_params.cur_step_num - self._last_print_time) >= self._per_print_times:
+#             self._last_print_time = cb_params.cur_step_num
+#             print('%f seconds per epoch' % (time.time() - self.start_time))
             
-            # print(cb_params)
-            # print(cb_params.train_dataset)
-            # print(cb_params.epoch_num)
-            # print(cb_params.batch_num)
-            # print(cb_params.train_network)
-            # print(cb_params.cur_epoch_num)
-            # print(cb_params.cur_step_num)
-            # print(cb_params.parallel_mode)
-            # print(cb_params.net_outputs)
-            start_time = time.time()
-            result = self.model.eval(self.ds_eval)
-            end_time = time.time()
-            print('Took %f seconds to evaluate' % (end_time - start_time))
-            print("score:",result['score'])
-            if result['score'] > self.acc:
-                print(f"best score update from {self.acc} to {result['score']}")
-                self.acc = result['score']
-                self.train_network = cb_params.train_network
-                # file_name = self.filepath + str(self.acc) + ".ckpt"
-                # ms.save_checkpoint(save_obj=cb_params.train_network, ckpt_file_name=file_name)
-                # print("Save the maximum accuracy checkpoint,the accuracy is", self.acc)
-            self.start_time = time.time()
+#             # print(cb_params)
+#             # print(cb_params.train_dataset)
+#             # print(cb_params.epoch_num)
+#             # print(cb_params.batch_num)
+#             # print(cb_params.train_network)
+#             # print(cb_params.cur_epoch_num)
+#             # print(cb_params.cur_step_num)
+#             # print(cb_params.parallel_mode)
+#             # print(cb_params.net_outputs)
+#             start_time = time.time()
+#             result = self.model.eval(self.ds_eval)
+#             end_time = time.time()
+#             print('Took %f seconds to evaluate' % (end_time - start_time))
+#             print("score:",result['score'])
+#             if result['score'] > self.acc:
+#                 print(f"best score update from {self.acc} to {result['score']}")
+#                 self.acc = result['score']
+#                 self.train_network = cb_params.train_network
+#                 # file_name = self.filepath + str(self.acc) + ".ckpt"
+#                 # ms.save_checkpoint(save_obj=cb_params.train_network, ckpt_file_name=file_name)
+#                 # print("Save the maximum accuracy checkpoint,the accuracy is", self.acc)
+#             self.start_time = time.time()
     
-    def end(self, run_context):
-        if(self.train_network is not None):
-            file_name = self.filepath + str(self.acc) + ".ckpt"
-            ms.save_checkpoint(save_obj=self.train_network, ckpt_file_name=file_name)
-            print("Maximum score checkpoint saved")
-        else:
-            print("no improvement")
+#     def end(self, run_context):
+#         if(self.train_network is not None):
+#             file_name = self.filepath + str(self.acc) + ".ckpt"
+#             ms.save_checkpoint(save_obj=self.train_network, ckpt_file_name=file_name)
+#             print("Maximum score checkpoint saved")
+#         else:
+#             print("no improvement")
 
-class DatasetGenerator:
-    def __init__(self,Nf,repeatTimes):
-        # print("***************DatasetGenerator __init__*****************")
-        # np.random.seed(58)
-        self.__index = 0
-        self.data_load_address = './data'
-        self.Nf=Nf
-        # self.Ne=Ne
-        # self.steps_per_epoch=steps_per_epoch
-        self.repeatTimes=repeatTimes
-        self.batch_x=None
-        self.batch_y=None
+# class DatasetGenerator:
+#     def __init__(self,Nf,repeatTimes):
+#         # print("***************DatasetGenerator __init__*****************")
+#         # np.random.seed(58)
+#         self.__index = 0
+#         self.data_load_address = './data'
+#         self.Nf=Nf
+#         # self.Ne=Ne
+#         # self.steps_per_epoch=steps_per_epoch
+#         self.repeatTimes=repeatTimes
+#         self.batch_x=None
+#         self.batch_y=None
 
-    def __next__(self):
-        # if self.__index >= len(self.__data):
-        #     raise StopIteration
-        # else:
-        #     item = (self.__data[self.__index], self.__label[self.__index])
-        #     self.__index += 1
-        #     return item
-        if self.__index >= self.Nf*9000*self.repeatTimes:
-            print("***************DatasetGenerator data reading finished*****************")
-            raise StopIteration
-        if(self.__index%(9000*self.repeatTimes)==0):
-            print(self.__index,"reading data from file")
-            start_time = time.time()
-            dataSetName = os.listdir(self.data_load_address+'/trainSet/')
-            while(len(dataSetName)<=1):
-                print("data not generated yet")
-                time.sleep(5)
-                dataSetName = os.listdir(self.data_load_address+'/trainSet/')
-            fileIdx=1
-            uuidStr=dataSetName[fileIdx].split(".")[0]
-            while(dataSetName.count(uuidStr)==0):
-                fileIdx=(fileIdx+1)%len(dataSetName)
-                if(fileIdx==0):
-                    print(uuidStr,"data not ready")
-                    time.sleep(0.5)
-                    fileIdx=1
-                dataSetName = os.listdir(self.data_load_address+'/trainSet/')
-                uuidStr=dataSetName[fileIdx].split(".")[0]
-            print(uuidStr+'.npy')
-            all=np.load(self.data_load_address+'/trainSet/'+uuidStr+'.npy').astype(np.float32)
-            os.remove(self.data_load_address+'/trainSet/'+uuidStr)
-            os.remove(self.data_load_address+'/trainSet/'+uuidStr+'.npy')
+#     def __next__(self):
+#         # if self.__index >= len(self.__data):
+#         #     raise StopIteration
+#         # else:
+#         #     item = (self.__data[self.__index], self.__label[self.__index])
+#         #     self.__index += 1
+#         #     return item
+#         if self.__index >= self.Nf*9000*self.repeatTimes:
+#             print("***************DatasetGenerator data reading finished*****************")
+#             raise StopIteration
+#         if(self.__index%(9000*self.repeatTimes)==0):
+#             print(self.__index,"reading data from file")
+#             start_time = time.time()
+#             dataSetName = os.listdir(self.data_load_address+'/trainSet/')
+#             while(len(dataSetName)<=1):
+#                 print("data not generated yet")
+#                 time.sleep(5)
+#                 dataSetName = os.listdir(self.data_load_address+'/trainSet/')
+#             fileIdx=1
+#             uuidStr=dataSetName[fileIdx].split(".")[0]
+#             while(dataSetName.count(uuidStr)==0):
+#                 fileIdx=(fileIdx+1)%len(dataSetName)
+#                 if(fileIdx==0):
+#                     print(uuidStr,"data not ready")
+#                     time.sleep(0.5)
+#                     fileIdx=1
+#                 dataSetName = os.listdir(self.data_load_address+'/trainSet/')
+#                 uuidStr=dataSetName[fileIdx].split(".")[0]
+#             print(uuidStr+'.npy')
+#             all=np.load(self.data_load_address+'/trainSet/'+uuidStr+'.npy').astype(np.float32)
+#             os.remove(self.data_load_address+'/trainSet/'+uuidStr)
+#             os.remove(self.data_load_address+'/trainSet/'+uuidStr+'.npy')
         
-            batch_x=all[:2048].T
-            batch_y=all[2048:].T
-            end_time = time.time()
-            print('\nTook %f seconds to read 9000 training data\n' % (end_time - start_time))
-            # batch_divider = int(self.steps_per_epoch/self.Ne)#9000/batch_size
-            # batch_ys = np.split(batch_y, batch_divider, 0)
-            # batch_xs = np.split(batch_x, batch_divider, 0)
-            print("repeat dataset")
-            batch_ys = []
-            batch_xs = []
-            for _ in range(self.repeatTimes):
-                batch_ys.append(batch_y)
-                batch_xs.append(batch_x)
-            self.batch_x=np.concatenate(batch_xs,0)
-            print(self.batch_x.shape,self.batch_x.dtype)
-            self.batch_y=np.concatenate(batch_ys,0)
-            print(self.batch_y.shape,self.batch_x.dtype)
-        item = (self.batch_y[self.__index%(9000*self.repeatTimes)],self.batch_x[self.__index%(9000*self.repeatTimes)])
-        self.__index += 1
-        return item
+#             batch_x=all[:2048].T
+#             batch_y=all[2048:].T
+#             end_time = time.time()
+#             print('\nTook %f seconds to read 9000 training data\n' % (end_time - start_time))
+#             # batch_divider = int(self.steps_per_epoch/self.Ne)#9000/batch_size
+#             # batch_ys = np.split(batch_y, batch_divider, 0)
+#             # batch_xs = np.split(batch_x, batch_divider, 0)
+#             print("repeat dataset")
+#             batch_ys = []
+#             batch_xs = []
+#             for _ in range(self.repeatTimes):
+#                 batch_ys.append(batch_y)
+#                 batch_xs.append(batch_x)
+#             self.batch_x=np.concatenate(batch_xs,0)
+#             print(self.batch_x.shape,self.batch_x.dtype)
+#             self.batch_y=np.concatenate(batch_ys,0)
+#             print(self.batch_y.shape,self.batch_x.dtype)
+#         item = (self.batch_y[self.__index%(9000*self.repeatTimes)],self.batch_x[self.__index%(9000*self.repeatTimes)])
+#         self.__index += 1
+#         return item
 
-    def __iter__(self):
-        # print("***************DatasetGenerator __iter__*****************")
-        # self.__index = 0
-        return self
+#     def __iter__(self):
+#         # print("***************DatasetGenerator __iter__*****************")
+#         # self.__index = 0
+#         return self
 
-    def __len__(self):
-        # print("***************DatasetGenerator __len__*****************")
-        return self.Nf*9000*self.repeatTimes
+#     def __len__(self):
+#         # print("***************DatasetGenerator __len__*****************")
+#         return self.Nf*9000*self.repeatTimes
