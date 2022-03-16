@@ -1,6 +1,6 @@
-for i in $(seq 1 18)
+for i in $(seq 1 12)
   do  
     echo -e "starting ${i}"
-	  python trainSet.py &
-	  sleep 14
+	  nohup python trainSet.py &
+	  sleep 15
   done

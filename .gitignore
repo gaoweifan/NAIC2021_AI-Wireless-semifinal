@@ -6,6 +6,7 @@
 *.bin
 *.csv
 *.meta
+*.out
 logs
 rank_0
 data
