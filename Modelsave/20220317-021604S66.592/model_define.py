@@ -37,20 +37,19 @@ class patch_extract(layers.Layer):
     
     def call(self, images):
         
-        # batch_size = tf.shape(images)[0]
+        batch_size = tf.shape(images)[0]
         
-        # patches = extract_patches(images=images,
-        #                           sizes=(1, self.patch_size_x, self.patch_size_y, 1),
-        #                           strides=(1, self.patch_size_x, self.patch_size_y, 1),
-        #                           rates=(1, 1, 1, 1), padding='VALID',)
-        # patches.shape = (num_sample, patch_num, patch_num, patch_size_x*patch_size_y*channel)
-        # print(patches.shape)
-        # patch_dim = patches.shape[-1]
-        # patch_num_x = patches.shape[1]
-        # patch_num_y = patches.shape[2]
-        # patches = tf.reshape(patches, (batch_size, patch_num_x*patch_num_y, patch_dim))
+        patches = tf.image.extract_patches(images=images,
+                                  sizes=(1, self.patch_size_x, self.patch_size_y, 1),
+                                  strides=(1, self.patch_size_x, self.patch_size_y, 1),
+                                  rates=(1, 1, 1, 1), padding='VALID',)
+        # patches.shape = (num_sample, patch_num, patch_num, patch_size*channel)
+        
+        patch_dim = patches.shape[-1]
+        patch_num = patches.shape[1]
+        patches = tf.reshape(patches, (batch_size, patch_num*patch_num, patch_dim))
         # patches.shape = (num_sample, patch_num*patch_num, patch_size*channel)
-        patches = tf.reshape(images, (-1, 256*2, 32))
+        
         return patches
     
     def get_config(self):
@@ -61,7 +60,7 @@ class patch_extract(layers.Layer):
     @classmethod
     def from_config(cls, config):
         return cls(**config)
-
+    
 class patch_embedding(layers.Layer):
     '''
     Embed patches to tokens.
@@ -157,24 +156,18 @@ class patch_merging(tf.keras.layers.Layer):
         assert (L == H * W), 'input feature has wrong size'
         assert (H % 2 == 0 and W % 2 == 0), '{}-by-{} patches received, they are not even.'.format(H, W)
         
-        # # Convert the patch sequence to aligned patches
+        # Convert the patch sequence to aligned patches
         x = tf.reshape(x, shape=(-1, H, W, C))
-        print("patch_merging",x.shape)
-
+        
         # Downsample
-        # x0 = x[:, 0::2, 0::2, :]  # B H/2 W/2 C
-        # x1 = x[:, 1::2, 0::2, :]  # B H/2 W/2 C
-        # x2 = x[:, 0::2, 1::2, :]  # B H/2 W/2 C
-        # x3 = x[:, 1::2, 1::2, :]  # B H/2 W/2 C
-        # x = tf.concat((x0, x1, x2, x3), axis=-1)
-        x0 = x[:, 0::2, :, :]  # B H/2 W C
-        x1 = x[:, 1::2, :, :]  # B H/2 W C
-        x = tf.concat((x0, x1), axis=-1)  # B H/2 W 2*C
-
+        x0 = x[:, 0::2, 0::2, :]  # B H/2 W/2 C
+        x1 = x[:, 1::2, 0::2, :]  # B H/2 W/2 C
+        x2 = x[:, 0::2, 1::2, :]  # B H/2 W/2 C
+        x3 = x[:, 1::2, 1::2, :]  # B H/2 W/2 C
+        x = tf.concat((x0, x1, x2, x3), axis=-1)
+        
         # Convert to the patch squence
-        # x = tf.reshape(x, shape=(-1, (H//2)*(W//2), 4*C))
-        x = tf.reshape(x, shape=(-1, (H//2)*(W), 2*C))
-        print("patch_merging_token",x.shape)
+        x = tf.reshape(x, shape=(-1, (H//2)*(W//2), 4*C))
        
         # Linear transform
         x = self.linear_trans(x)
@@ -207,9 +200,9 @@ class patch_expanding(tf.keras.layers.Layer):
         self.return_vector = return_vector
         
         # Linear transformations that doubles the channels 
-        self.linear_trans1 = layers.Conv2D(embed_dim//upsample_rate, kernel_size=1, use_bias=False, name='{}_linear_trans1'.format(name))
+        self.linear_trans1 = layers.Conv2D(upsample_rate*embed_dim, kernel_size=1, use_bias=False, name='{}_linear_trans1'.format(name))
         # 
-        # self.linear_trans2 = layers.Conv2D(upsample_rate*embed_dim, kernel_size=1, use_bias=False, name='{}_linear_trans1'.format(name))
+        self.linear_trans2 = layers.Conv2D(upsample_rate*embed_dim, kernel_size=1, use_bias=False, name='{}_linear_trans1'.format(name))
         self.prefix = name
         
     def get_config(self):
@@ -236,23 +229,14 @@ class patch_expanding(tf.keras.layers.Layer):
 
         x = tf.reshape(x, (-1, H, W, C))
         
-        # x = self.linear_trans1(x)
+        x = self.linear_trans1(x)
         
         # rearange depth to number of patches
-        # x = depth_to_space(x, self.upsample_rate, data_format='NHWC', name='{}_d_to_space'.format(self.prefix))
-        x0 = x[:,:,:,:C//self.upsample_rate]# B H W C//2
-        x1 = x[:,:,:,C//self.upsample_rate:]# B H W C//2
-        x = tf.concat([tf.concat([tf.expand_dims(x0[:,i,:,:], 1),tf.expand_dims(x1[:,i,:,:], 1)],axis=1) for i in range(H)], axis=1)     # B H*2 W C//2
-        # x[:, 0::2, :, :] = x0
-        # x[:, 1::2, :, :] = x1
-        x = self.linear_trans1(x)
-        print("patch_expanding",x.shape)
-
+        x = tf.nn.depth_to_space(x, self.upsample_rate, data_format='NHWC', name='{}_d_to_space'.format(self.prefix))
+        
         if self.return_vector:
             # Convert aligned patches to a patch sequence
-            # x = tf.reshape(x, (-1, L*self.upsample_rate*self.upsample_rate, C//2))
-            x = tf.reshape(x, (-1, L*self.upsample_rate, C//2))
-            print("patch_expanding_token",x.shape)
+            x = tf.reshape(x, (-1, L*self.upsample_rate*self.upsample_rate, C//2))
 
         return x
 
@@ -719,8 +703,8 @@ def swin_unet_2d_base(input_tensor, filter_num_begin, depth, stack_num_down, sta
     '''
     # Compute number be patches to be embeded
     input_size = input_tensor.shape.as_list()[1:]
-    num_patch_x = input_size[0]#256
-    num_patch_y = input_size[1]#2
+    num_patch_x = input_size[0]//patch_size[0]
+    num_patch_y = input_size[1]//patch_size[1]
     
     # Number of Embedded dimensions
     embed_dim = filter_num_begin
@@ -729,21 +713,21 @@ def swin_unet_2d_base(input_tensor, filter_num_begin, depth, stack_num_down, sta
     
     X_skip = []
 
-    X = input_tensor#(None, 256, 2, 32)
+    X = input_tensor
     
     # Patch extraction
-    X = patch_extract(patch_size)(X)#(None, 512, 32)
+    X = patch_extract(patch_size)(X)
 
     # Embed patches to tokens
-    X = patch_embedding(512, embed_dim)(X)#(None, 512, 32)
+    X = patch_embedding(num_patch_x*num_patch_y, embed_dim)(X)
     
     # The first Swin Transformer stack
     X = swin_transformer_stack(X, stack_num=stack_num_down, 
-                               embed_dim=embed_dim, num_patch=(256, 2), 
+                               embed_dim=embed_dim, num_patch=(num_patch_x, num_patch_y), 
                                num_heads=num_heads[0], window_size=window_size[0], num_mlp=num_mlp, 
-                               shift_window=shift_window, name='{}_swin_down0'.format(name))#(None, 512, 32)
+                               shift_window=shift_window, name='{}_swin_down0'.format(name))
     X_skip.append(X)
-
+    
     # Downsampling blocks
     for i in range(depth_-1):
         
@@ -753,7 +737,7 @@ def swin_unet_2d_base(input_tensor, filter_num_begin, depth, stack_num_down, sta
         # update token shape info
         embed_dim = embed_dim*2
         num_patch_x = num_patch_x//2
-        num_patch_y = num_patch_y
+        num_patch_y = num_patch_y//2
         
         # Swin Transformer stacks
         X = swin_transformer_stack(X, stack_num=stack_num_down, 
@@ -787,7 +771,7 @@ def swin_unet_2d_base(input_tensor, filter_num_begin, depth, stack_num_down, sta
         # update token shape info
         embed_dim = embed_dim//2
         num_patch_x = num_patch_x*2
-        num_patch_y = num_patch_y
+        num_patch_y = num_patch_y*2
         
         # Concatenation and linear projection
         X = layers.concatenate([X, X_decode[i]], axis=-1, name='{}_concat_{}'.format(name, i))
@@ -801,9 +785,8 @@ def swin_unet_2d_base(input_tensor, filter_num_begin, depth, stack_num_down, sta
         
     # The last expanding layer; it produces full-size feature maps based on the patch size
     # !!! <--- "patch_size[0]" is used; it assumes patch_size = (size, size)
-    # X = patch_expanding(num_patch=(num_patch_x, num_patch_y),
-    #                     embed_dim=embed_dim, upsample_rate=patch_size[0], return_vector=False)(X)
-    X = layers.Reshape((256,2,32))(X)
+    X = patch_expanding(num_patch=(num_patch_x, num_patch_y),
+                        embed_dim=embed_dim, upsample_rate=patch_size[0], return_vector=False)(X)
     
     return X
 
@@ -818,21 +801,20 @@ def rxModel(input_bits):
     temp = layers.Permute((1,3,4,2))(temp)#256(载波)*2(IQ)*32*1
     temp = layers.Reshape((256,2,32))(temp)
 
-    # temp = layers.Conv2D(64, (7, 7), strides=(2, 1), padding='same', name="conv2d_in_2")(temp)#128*2*64
-    # temp = layers.BatchNormalization()(temp)
-    # temp = layers.Activation('relu')(temp)
-    # temp = layers.Permute((1,3,2))(temp)#128*64*2
-    # temp = layers.Conv2D(4, (7, 7), strides=(2, 1), padding='same', name="conv2d_in_3")(temp)#64*64*4
-    # temp = layers.BatchNormalization()(temp)
-    # temp = layers.Activation('relu')(temp)
+    temp = layers.Conv2D(64, (7, 7), strides=(2, 1), padding='same', name="conv2d_in_2")(temp)#128*2*64
+    temp = layers.BatchNormalization()(temp)
+    temp = layers.Activation('relu')(temp)
+    temp = layers.Permute((1,3,2))(temp)#128*64*2
+    temp = layers.Conv2D(4, (7, 7), strides=(2, 1), padding='same', name="conv2d_in_3")(temp)#64*64*4
+    temp = layers.BatchNormalization()(temp)
+    temp = layers.Activation('relu')(temp)
 
-    temp = swin_unet_2d_base(temp, filter_num_begin=32, depth=4, stack_num_down=2, stack_num_up=2, 
-                          patch_size=(2, 2), num_heads=[4, 8, 8, 8], window_size=[2, 2, 2, 2], num_mlp=256, shift_window=True, name="swin_unet")
+    temp = swin_unet_2d_base(temp, filter_num_begin=16, depth=4, stack_num_down=2, stack_num_up=2, 
+                          patch_size=(2, 2), num_heads=[2, 4, 4, 4], window_size=[4, 2, 2, 2], num_mlp=256, shift_window=True, name="swin_unet")
 
-    # temp = layers.Conv2D(4, (7, 7), strides=(1, 1), padding='same', name="conv2d_out_3")(temp)#256,2,4
-    # temp = layers.BatchNormalization()(temp)
-    # temp = layers.Activation('relu')(temp)
-    temp = layers.Permute((3,1,2))(temp)#4,256,2
+    temp = layers.Conv2D(4, (7, 7), strides=(1, 1), padding='same', name="conv2d_out_3")(temp)#64,64,4
+    temp = layers.BatchNormalization()(temp)
+    temp = layers.Activation('relu')(temp)
 
     temp = layers.Flatten()(temp)
     out_put = layers.Dense(4*256*2, activation='sigmoid')(temp)# 4*256*2 bit

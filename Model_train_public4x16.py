@@ -17,8 +17,8 @@ if __name__=="__main__":
     input_bits = Input(shape=(256*16*2*2,))#256载波*16天线*2（导频/数据）*2（IQ）
     out_put = rxModel(input_bits)
     model=Model(input_bits, out_put)
-    model.load_weights('Modelsave/tmp20220316-004628/model_4x16.h5',by_name=True,skip_mismatch=True)
-    opt = tf.keras.optimizers.Adam(learning_rate=0.01,amsgrad=True)  # 初始学习率为0.001
+    model.load_weights('Modelsave/tmp20220317-131930/model_4x16.h5',by_name=True,skip_mismatch=True)
+    opt = tf.keras.optimizers.Adam(learning_rate=0.001,amsgrad=False)  # 初始学习率为0.001
     # opt = tfa.optimizers.LazyAdam(0.001)
     model.compile(optimizer=opt, loss='mse',metrics=[score_train])
     model.summary()
@@ -34,8 +34,8 @@ if __name__=="__main__":
 
     #############产生Y与X用于验证模型性能，非评测用
     # Y_val, X_val = generatorXY(2000, H)
-    Y_val=np.load(main_address+'/data/y_test.npy')
-    X_val=np.load(main_address+'/data/x_test.npy')
+    Y_val=np.load(main_address+'/data/y_test.npy')[:9000]
+    X_val=np.load(main_address+'/data/x_test.npy')[:9000]
     print(np.shape(Y_val))
     print(np.shape(X_val))
 
@@ -82,7 +82,7 @@ if __name__=="__main__":
     bsCallback=bestScoreCallback(Y_val, X_val)
 
     # 早停回调函数
-    esCBk=EarlyStopping(monitor='val_score_train', patience=100, verbose=1, mode='max', baseline=None, restore_best_weights=False)
+    esCBk=EarlyStopping(monitor='val_score_train', patience=300, verbose=1, mode='max', baseline=None, restore_best_weights=False)
     
     # each_batch=2000
     # batch_divider=2  # 每批次样本数=each_batch/batch_divider
@@ -91,7 +91,7 @@ if __name__=="__main__":
     # steps_per_epoch=worker*batch_divider
     steps_per_epoch=15
     batch_size=600
-    epoch=1400
+    epoch=1500
     repeatTimes=1
     Ne=batch_size*steps_per_epoch/9000  # 每轮需要的文件数
     Nf=int(epoch*Ne/repeatTimes)  # 需要的总文件数

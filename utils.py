@@ -401,11 +401,9 @@ def offLineGenerator(H,Nf,Ne,steps_per_epoch,repeatTimes=1):
             batch_divider = int(steps_per_epoch/Ne)#9000/batch_size
             batch_ys = np.split(batch_y, batch_divider, 0)
             batch_xs = np.split(batch_x, batch_divider, 0)
-            for _ in range(repeatTimes):
-                batch_ys.extend(batch_ys)
-                batch_xs.extend(batch_xs)
-        for i,devided_batch_y in enumerate(batch_ys):
-            yield (devided_batch_y, batch_xs[i])
+        for _ in range(repeatTimes):
+            for i,devided_batch_y in enumerate(batch_ys):
+                yield (devided_batch_y, batch_xs[i])
 
 
 #评价指标
