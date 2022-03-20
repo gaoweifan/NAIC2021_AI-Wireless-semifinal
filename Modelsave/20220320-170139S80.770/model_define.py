@@ -72,7 +72,7 @@ class TransformerBlock(layers.Layer):
         ffn_output = self.dropout2(ffn_output, training=training)
         return self.layernorm2(out1 + ffn_output)
 
-def rxModel(input_bits,trainable=True):
+def rxModel(input_bits,trainable=False):
     # temp = layers.Reshape((256,16*2*2))(input_bits)
     temp = layers.Reshape((256,16,2,2))(input_bits)
     temp = layers.Permute((1,4,2,3))(temp)#256载波*2（IQ）*16天线*2（导频/数据作为通道维）
@@ -93,12 +93,12 @@ def rxModel(input_bits,trainable=True):
 
     temp = layers.Reshape((256,2*16*2))(temp+x1)
 
-    temp = Mlp([mlp_num,embed_dim_base], drop=0.,trainable=trainable,name="input_mlp")(temp)
+    temp = Mlp([mlp_num,embed_dim_base], drop=0.,trainable=True,name="input_mlp")(temp)
     encoded_patches = layers.BatchNormalization(trainable=trainable)(temp)
 
     # Create multiple layers of the Transformer block.
-    x_1 = TransformerBlock(embed_dim_base, num_heads, embed_dim_base*2, rate=0,trainable=trainable)(encoded_patches)
-    x_final = TransformerBlock(embed_dim_base, num_heads, embed_dim_base*2, rate=0,trainable=trainable)(x_1)
+    # x_1 = TransformerBlock(embed_dim_base, num_heads, embed_dim_base*2, rate=0,trainable=True)(encoded_patches)
+    x_final = TransformerBlock(embed_dim_base, num_heads, embed_dim_base*2, rate=0,trainable=True)(encoded_patches)
 
     # Add MLP.
     features = Mlp([mlp_num,8], drop=0.,trainable=trainable,name="output_mlp")(x_final)

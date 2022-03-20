@@ -3,7 +3,7 @@ import keras
 from keras import layers
 
 ####################定义模型####################
-embed_dim_base = 768
+embed_dim_base = 256
 num_heads = 3
 mlp_num=1024
 
@@ -77,18 +77,18 @@ def rxModel(input_bits,trainable=True):
     temp = layers.Reshape((256,16,2,2))(input_bits)
     temp = layers.Permute((1,4,2,3))(temp)#256载波*2（IQ）*16天线*2（导频/数据作为通道维）
     temp = layers.Reshape((256,2,16*2))(temp)
-    x1 = layers.BatchNormalization(trainable=trainable)(temp)
+    x1 = layers.BatchNormalization()(temp)
 
-    x2 = layers.Conv2D(32, (3, 3), padding='same', name="conv2d_in_1",trainable=trainable)(x1)
-    temp = layers.BatchNormalization(trainable=trainable)(x2)
+    x2 = layers.Conv2D(32, (3, 3), padding='same', name="conv2d_in_1")(x1)
+    temp = layers.BatchNormalization()(x2)
     temp = layers.LeakyReLU(alpha=0.1)(temp)
 
-    x3 = layers.Conv2D(128, (3, 3), padding='same', name="conv2d_in_2",trainable=trainable)(temp)
-    temp = layers.BatchNormalization(trainable=trainable)(x3)
+    x3 = layers.Conv2D(128, (3, 3), padding='same', name="conv2d_in_2")(temp)
+    temp = layers.BatchNormalization()(x3)
     temp = layers.LeakyReLU(alpha=0.1)(temp)
 
-    x4 = layers.Conv2D(32, (3, 3), padding='same', name="conv2d_in_3",trainable=trainable)(temp)
-    temp = layers.BatchNormalization(trainable=trainable)(x4)
+    x4 = layers.Conv2D(32, (3, 3), padding='same', name="conv2d_in_3")(temp)
+    temp = layers.BatchNormalization()(x4)
     temp = layers.LeakyReLU(alpha=0.1)(temp)
 
     temp = layers.Reshape((256,2*16*2))(temp+x1)
@@ -97,8 +97,7 @@ def rxModel(input_bits,trainable=True):
     encoded_patches = layers.BatchNormalization(trainable=trainable)(temp)
 
     # Create multiple layers of the Transformer block.
-    x_1 = TransformerBlock(embed_dim_base, num_heads, embed_dim_base*2, rate=0,trainable=trainable)(encoded_patches)
-    x_final = TransformerBlock(embed_dim_base, num_heads, embed_dim_base*2, rate=0,trainable=trainable)(x_1)
+    x_final = TransformerBlock(embed_dim_base, num_heads, embed_dim_base*2, rate=0,trainable=trainable)(encoded_patches)
 
     # Add MLP.
     features = Mlp([mlp_num,8], drop=0.,trainable=trainable,name="output_mlp")(x_final)

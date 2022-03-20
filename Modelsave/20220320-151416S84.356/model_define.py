@@ -3,7 +3,7 @@ import keras
 from keras import layers
 
 ####################定义模型####################
-embed_dim_base = 768
+embed_dim_base = 256
 num_heads = 3
 mlp_num=1024
 

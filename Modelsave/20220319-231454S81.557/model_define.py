@@ -1,11 +1,12 @@
 import tensorflow as tf
 import keras
-from keras import layers
-
+from keras import layers,backend as K
+import numpy as np
+from tensorflow import math
+from keras.layers import ReLU, LeakyReLU, PReLU, ELU, Softmax
 ####################定义模型####################
-embed_dim_base = 768
-num_heads = 3
-mlp_num=1024
+embed_dim = 256
+num_heads = 4
 
 class Mlp(layers.Layer):
     def __init__(self, filter_num, drop=0., trainable=True, **kwargs):
@@ -49,8 +50,8 @@ class Mlp(layers.Layer):
         return x
 
 class TransformerBlock(layers.Layer):
-    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1, trainable=True, **kwargs):
-        super(TransformerBlock, self).__init__(**kwargs)
+    def __init__(self, embed_dim, num_heads, ff_dim, rate=0.1, trainable=True):
+        super(TransformerBlock, self).__init__()
         self.att = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embed_dim, trainable=trainable)
         self.ffn = keras.Sequential(
             [layers.Dense(ff_dim, activation=tf.keras.activations.gelu, trainable=trainable), layers.Dense(embed_dim, trainable=trainable),]
@@ -73,45 +74,19 @@ class TransformerBlock(layers.Layer):
         return self.layernorm2(out1 + ffn_output)
 
 def rxModel(input_bits,trainable=True):
-    # temp = layers.Reshape((256,16*2*2))(input_bits)
-    temp = layers.Reshape((256,16,2,2))(input_bits)
-    temp = layers.Permute((1,4,2,3))(temp)#256载波*2（IQ）*16天线*2（导频/数据作为通道维）
-    temp = layers.Reshape((256,2,16*2))(temp)
-    x1 = layers.BatchNormalization(trainable=trainable)(temp)
-
-    x2 = layers.Conv2D(32, (3, 3), padding='same', name="conv2d_in_1",trainable=trainable)(x1)
-    temp = layers.BatchNormalization(trainable=trainable)(x2)
-    temp = layers.LeakyReLU(alpha=0.1)(temp)
-
-    x3 = layers.Conv2D(128, (3, 3), padding='same', name="conv2d_in_2",trainable=trainable)(temp)
-    temp = layers.BatchNormalization(trainable=trainable)(x3)
-    temp = layers.LeakyReLU(alpha=0.1)(temp)
-
-    x4 = layers.Conv2D(32, (3, 3), padding='same', name="conv2d_in_3",trainable=trainable)(temp)
-    temp = layers.BatchNormalization(trainable=trainable)(x4)
-    temp = layers.LeakyReLU(alpha=0.1)(temp)
-
-    temp = layers.Reshape((256,2*16*2))(temp+x1)
-
-    temp = Mlp([mlp_num,embed_dim_base], drop=0.,trainable=trainable,name="input_mlp")(temp)
-    encoded_patches = layers.BatchNormalization(trainable=trainable)(temp)
+    temp = layers.Reshape((256,16*2*2))(input_bits)
+    patches = layers.BatchNormalization(trainable=trainable)(temp)
+    
+    encoded_patches = Mlp([1024,embed_dim], drop=0.,trainable=trainable,name="input_mlp")(patches)
 
     # Create multiple layers of the Transformer block.
-    x_1 = TransformerBlock(embed_dim_base, num_heads, embed_dim_base*2, rate=0,trainable=trainable)(encoded_patches)
-    x_final = TransformerBlock(embed_dim_base, num_heads, embed_dim_base*2, rate=0,trainable=trainable)(x_1)
+    encoded_patches = TransformerBlock(embed_dim, num_heads, embed_dim*2, rate=0.1,trainable=trainable)(encoded_patches)
 
     # Add MLP.
-    features = Mlp([mlp_num,8], drop=0.,trainable=trainable,name="output_mlp")(x_final)
-    features = layers.Reshape((256,2,4))(features)
-    features = layers.Permute((3,1,2))(features)
+    features = Mlp([1024,8], drop=0.,trainable=trainable,name="output_mlp")(encoded_patches)
+    features = layers.Reshape((256,4,2))(features)
+    features = layers.Permute((2,1,3))(features)
     temp = layers.Flatten()(features)
     # Classify outputs.
     out_put = layers.Dense(4*256*2, activation='sigmoid',trainable=trainable,name="dense_output")(temp)# 4*256*2 bit
     return out_put
-
-####################构建模型示例####################
-'''
-input_bits = keras.Input(shape=(256*16*2*2,))#256载波*16天线*2（导频/数据）*2（IQ）
-out_put = rxModel(input_bits)
-model=keras.Model(input_bits, out_put)
-'''
