@@ -19,7 +19,7 @@ if __name__=="__main__":
     # steps_per_epoch=worker*batch_divider
     steps_per_epoch=36
     batch_size=250
-    epoch=100
+    epoch=1000
     repeatTimes=1
     Ne=batch_size*steps_per_epoch/9000  # 每轮需要的文件数
     Nf=int(epoch*Ne/repeatTimes)  # 需要的总文件数
@@ -39,8 +39,8 @@ if __name__=="__main__":
     input_bits = Input(shape=(256*16*2*2,))#256载波*16天线*2（导频/数据）*2（IQ）
     out_put = rxModel(input_bits)
     model=Model(input_bits, out_put)
-    model.load_weights('Modelsave/tmp20220320-174224/model_4x16.h5',by_name = True, skip_mismatch = True)
-    opt = tf.keras.optimizers.Adam(learning_rate=0.0001,amsgrad=False)  # 初始学习率为0.001
+    model.load_weights('Modelsave/20220320-114700S87.479/model_4x16.h5',by_name = True, skip_mismatch = True)
+    opt = tf.keras.optimizers.Adam(learning_rate=0.0001,amsgrad=True)  # 初始学习率为0.001
     # opt = tfa.optimizers.LazyAdam(0.001)
     model.compile(optimizer=opt, loss='mse',metrics=[score_train])
     model.summary()
@@ -73,12 +73,19 @@ if __name__=="__main__":
             self.x_test = Y_val
             self.y_test = X_val
             self.best_score = 0
+            self.modelpath = f'{main_address}/Modelsave/tmp{current_time}/'
             super(bestScoreCallback, self).__init__()
 
         def on_train_begin(self, logs=None):
             # y_pred = self.model.predict(self.x_test)
             # self.best_score=score_train(self.y_test, y_pred)
             # print("initial best score:",self.best_score)
+            try:
+                os.mkdir(self.modelpath)
+            except:
+                pass
+            # save code
+            shutil.copyfile(f'{main_address}/model_define.py', self.modelpath+'model_define.py')
             return
 
         def on_epoch_end(self, epoch, logs=None):
@@ -90,21 +97,14 @@ if __name__=="__main__":
                 print("\nupdate best score from",self.best_score,"to",tmp_score)
                 self.best_score=tmp_score
                 print("\nsaving Model")
-                modelpath = f'{main_address}/Modelsave/tmp{current_time}/'
-                # encoder.save(modelpath+"encoder.h5")
-                # decoder.save(modelpath+"decoder.h5")
-                try:
-                    os.mkdir(modelpath)
-                except:
-                    pass
-                model.save(modelpath+"model_4x16.h5")
+                model.save(self.modelpath+"model_4x16.h5")
             else:
                 print("\nbest score still remain:",self.best_score,",larger than current:",tmp_score)
             return
     bsCallback=bestScoreCallback(Y_val, X_val)
 
     # 早停回调函数
-    esCBk=EarlyStopping(monitor='val_score_train', patience=600, verbose=1, mode='max', baseline=None, restore_best_weights=False)
+    esCBk=EarlyStopping(monitor='val_score_train', patience=400, verbose=1, mode='max', baseline=None, restore_best_weights=False)
 
     model.fit(
         # multiGenerator(H,epoch,each_batch,batch_divider,worker),
@@ -146,4 +146,4 @@ if __name__=="__main__":
         model.save(modelpath+'model_4x16.h5')
         print("model saved")
     # save code
-    shutil.copyfile(f'{main_address}/model_define.py', modelpath+'model_define.py')
+    # shutil.copyfile(f'{main_address}/model_define.py', modelpath+'model_define.py')
